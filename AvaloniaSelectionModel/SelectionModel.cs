@@ -242,12 +242,12 @@ namespace Avalonia.Controls.Selection
 
         private void SelectImpl(int index, bool reset, bool setAnchor)
         {
+            index = CoerceIndex(index);
+
             if (index == -1)
             {
-                throw new AvaloniaInternalException("Cannot select index -1.");
+                return;
             }
-
-            index = CoerceIndex(index);
 
             if (SingleSelect || reset || SelectedIndex == -1)
             {
@@ -260,10 +260,7 @@ namespace Avalonia.Controls.Selection
                         Ranges?.Clear();
                     }
 
-                    if (index != -1)
-                    {
-                        Ranges?.Add(new IndexRange(index));
-                    }
+                    Ranges?.Add(new IndexRange(index));
 
                     if (setAnchor)
                     {
