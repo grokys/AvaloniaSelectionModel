@@ -14,6 +14,12 @@ namespace Avalonia.Controls
     {
         private static readonly IndexRange s_invalid = new IndexRange(int.MinValue, int.MinValue);
 
+        public IndexRange(int index)
+        {
+            Begin = index;
+            End = index;
+        }
+
         public IndexRange(int begin, int end)
         {
             // Accept out of order begin/end pairs, just swap them.
@@ -87,7 +93,7 @@ namespace Avalonia.Controls
         public static bool operator ==(IndexRange left, IndexRange right) => left.Equals(right);
         public static bool operator !=(IndexRange left, IndexRange right) => !(left == right);
 
-        public static int GetAt(IList<IndexRange> ranges, int index)
+        public static int GetAt(IReadOnlyList<IndexRange> ranges, int index)
         {
             var currentIndex = 0;
 

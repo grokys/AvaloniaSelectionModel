@@ -9,9 +9,11 @@ namespace Avalonia.Controls.Selection
 {
     internal class SelectedIndexes<T> : IReadOnlyList<int>
     {
-        private readonly SelectionModel<T> _owner;
+        private readonly SelectionModel<T>? _owner;
+        private readonly IReadOnlyList<IndexRange>? _ranges;
 
         public SelectedIndexes(SelectionModel<T> owner) => _owner = owner;
+        public SelectedIndexes(IReadOnlyList<IndexRange> ranges) => _ranges = ranges;
 
         public int this[int index]
         {
@@ -22,13 +24,13 @@ namespace Avalonia.Controls.Selection
                     throw new IndexOutOfRangeException("The index was out of range.");
                 }
 
-                if (_owner.SingleSelect)
+                if (_owner?.SingleSelect == true)
                 {
                     return _owner.SelectedIndex;
                 }
                 else
                 {
-                    return IndexRange.GetAt(_owner.Ranges!, index);
+                    return IndexRange.GetAt(Ranges!, index);
                 }
             }
         }
@@ -37,16 +39,18 @@ namespace Avalonia.Controls.Selection
         {
             get
             {
-                if (_owner.SingleSelect)
+                if (_owner?.SingleSelect == true)
                 {
                     return _owner.SelectedIndex == -1 ? 0 : 1;
                 }
                 else
                 {
-                    return _owner.Ranges is object ? IndexRange.GetCount(_owner.Ranges) : 0;
+                    return IndexRange.GetCount(Ranges!);
                 }
             }
         }
+
+        private IReadOnlyList<IndexRange> Ranges => _ranges ?? _owner!.Ranges!;
 
         public IEnumerator<int> GetEnumerator()
         {
@@ -58,22 +62,21 @@ namespace Avalonia.Controls.Selection
                 }
             }
 
-            if (_owner.SingleSelect)
+            if (_owner?.SingleSelect == true)
             {
                 return SingleSelect();
             }
             else
             {
-                if (_owner.Ranges is null)
-                {
-                    throw new AvaloniaInternalException("Ranges was null but multiple selection is enabled.");
-                }
-
-                return IndexRange.EnumerateIndices(_owner.Ranges).GetEnumerator();
+                return IndexRange.EnumerateIndices(Ranges).GetEnumerator();
             }
         }
 
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        public static SelectedIndexes<T>? Create(IReadOnlyList<IndexRange>? ranges)
+        {
+            return ranges is object ? new SelectedIndexes<T>(ranges) : null;
+        }
 
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

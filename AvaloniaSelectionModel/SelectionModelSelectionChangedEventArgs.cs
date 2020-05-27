@@ -10,18 +10,18 @@ using System.Collections.Generic;
 
 namespace Avalonia.Controls
 {
-    public class SelectionModelSelectionChangedEventArgs : EventArgs
+    public class SelectionModelSelectionChangedEventArgs<T> : EventArgs
     {
         public SelectionModelSelectionChangedEventArgs(
             IReadOnlyList<int>? deselectedIndices,
             IReadOnlyList<int>? selectedIndices,
-            IReadOnlyList<object?>? deselectedItems,
-            IReadOnlyList<object?>? selectedItems)
+            IReadOnlyList<T>? deselectedItems,
+            IReadOnlyList<T>? selectedItems)
         {
             DeselectedIndices = deselectedIndices ?? Array.Empty<int>();
             SelectedIndices = selectedIndices ?? Array.Empty<int>();
-            DeselectedItems = deselectedItems ?? Array.Empty<object?>();
-            SelectedItems= selectedItems ?? Array.Empty<object?>();
+            DeselectedItems = deselectedItems ?? Array.Empty<T>();
+            SelectedItems= selectedItems ?? Array.Empty<T>();
         }
 
         /// <summary>
@@ -37,11 +37,11 @@ namespace Avalonia.Controls
         /// <summary>
         /// Gets the items that were removed from the selection.
         /// </summary>
-        public IReadOnlyList<object?> DeselectedItems { get; }
+        public IReadOnlyList<T> DeselectedItems { get; }
 
         /// <summary>
         /// Gets the items that were added to the selection.
         /// </summary>
-        public IReadOnlyList<object?> SelectedItems { get; }
+        public IReadOnlyList<T> SelectedItems { get; }
     }
 }

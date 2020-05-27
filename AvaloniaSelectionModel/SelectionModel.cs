@@ -15,7 +15,9 @@ namespace Avalonia.Controls.Selection
         private bool _singleSelect;
         private SelectedIndexes<T>? _selectedIndexes;
         private SelectedItems<T>? _selectedItems;
+        private int _updateCount;
         private State _state;
+        private State _startState;
 
         public SelectionModel()
         {
@@ -38,7 +40,11 @@ namespace Avalonia.Controls.Selection
                 if (_state.AnchorIndex != value)
                 {
                     _state.AnchorIndex = value;
-                    RaisePropertyChanged();
+
+                    if (_updateCount == 0)
+                    {
+                        RaisePropertyChanged();
+                    }
                 }
             }
         }
@@ -50,13 +56,19 @@ namespace Avalonia.Controls.Selection
             {
                 value = CoerceIndex(value);
 
-                if (value >= 0)
+                if (SelectedIndex != value)
                 {
-                    SelectImpl(value, true, true);
-                }
-                else
-                {
-                    ClearSelection();
+                    using (new Operation(this))
+                    {
+                        if (value >= 0)
+                        {
+                            SelectImpl(value, true, true);
+                        }
+                        else
+                        {
+                            ClearSelection();
+                        }
+                    }
                 }
             }
         }
@@ -77,6 +89,11 @@ namespace Avalonia.Controls.Selection
             {
                 if (_singleSelect != value)
                 {
+                    if (_updateCount != 0)
+                    {
+                        throw new InvalidOperationException("Cannot change selection mode while update is in progress.");
+                    }
+
                     _singleSelect = value;
 
                     if (_singleSelect)
@@ -105,47 +122,112 @@ namespace Avalonia.Controls.Selection
             {
                 if (_source != value)
                 {
-                    _source = value;
-                    Items?.Dispose();
-                    Items = ItemsSourceView<T>.Create(value);
-
-                    if (Items != null)
+                    if (_updateCount != 0)
                     {
-                        TrimInvalidSelections();
+                        throw new InvalidOperationException("Cannot change source while update is in progress.");
                     }
 
-                    RaisePropertyChanged();
+                    using (new Operation(this))
+                    {
+                        _source = value;
+                        _state.Items?.Dispose();
+                        _state.Items = ItemsSourceView<T>.Create(value);
+
+                        if (Items != null)
+                        {
+                            TrimInvalidSelections();
+                        }
+                    }
                 }
             }
         }
 
-        internal ItemsSourceView<T>? Items { get; private set; }
+        internal ItemsSourceView<T>? Items => _state.Items;
         internal List<IndexRange>? Ranges => _singleSelect ? null : _state.Ranges ??= new List<IndexRange>();
 
         public event PropertyChangedEventHandler? PropertyChanged;
+        public event EventHandler<SelectionModelSelectionChangedEventArgs<T>>? SelectionChanged;
 
         public void ClearSelection()
         {
-            var oldSelectedIndex = _state.SelectedIndex;
-            var oldAnchorIndex = _state.AnchorIndex;
-
+            using var o = new Operation(this);
             _state.SelectedIndex = _state.AnchorIndex = -1;
             Ranges?.Clear();
+        }
 
-            if (_state.SelectedIndex !=  oldSelectedIndex)
-            {
-                RaisePropertyChanged(nameof(SelectedIndex));
-            }
+        public void Select(int index)
+        {
+            using var o = new Operation(this);
+            SelectImpl(index, false, true);
+        }
 
-            if (_state.AnchorIndex != oldAnchorIndex)
+        public void Deselect(int index)
+        {
+            using var o = new Operation(this);
+            DeselectImpl(index);
+        }
+
+        public void BeginBatchUpdate()
+        {
+            if (_updateCount++ == 0)
             {
-                RaisePropertyChanged(nameof(AnchorIndex));
+                _startState = _state;
+                _startState.Ranges = Ranges?.ToList();
             }
         }
 
-        public void Select(int index) => SelectImpl(index, false, true);
+        public void EndBatchUpdate()
+        {
+            if (--_updateCount == 0)
+            {
+                if (SelectionChanged is object)
+                {
+                    IReadOnlyList<IndexRange>? selected = null;
+                    IReadOnlyList<IndexRange>? deselected = null;
 
-        public void Deselect(int index) => DeselectImpl(index);
+                    if (_startState.Ranges is null)
+                    {
+                        if (_state.Ranges is object)
+                        {
+                            throw new AvaloniaInternalException("Ranges at start of batch update was null but now it is set.");
+                        }
+
+                        if (_startState.SelectedIndex != _state.SelectedIndex)
+                        {
+                            if (_state.SelectedIndex != -1)
+                            {
+                                selected = new[] { new IndexRange(_state.SelectedIndex) };
+                            }
+
+                            if (_startState.SelectedIndex != -1)
+                            {
+                                deselected = new[] { new IndexRange(_startState.SelectedIndex) };
+                            }
+                        }
+                    }
+
+                    if (selected is object || deselected is object)
+                    {
+                        var e = new SelectionModelSelectionChangedEventArgs<T>(
+                            SelectedIndexes<T>.Create(deselected),
+                            SelectedIndexes<T>.Create(selected),
+                            SelectedItems<T>.Create(deselected, _startState.Items),
+                            SelectedItems<T>.Create(selected, _state.Items));
+                        SelectionChanged(this, e);
+                    }
+                }
+
+                if (_startState.SelectedIndex != _state.SelectedIndex)
+                {
+                    RaisePropertyChanged(nameof(SelectedIndex));
+                }
+
+                if (_startState.AnchorIndex != _state.AnchorIndex)
+                {
+                    RaisePropertyChanged(nameof(AnchorIndex));
+                }
+            }
+        }
 
         private int CoerceIndex(int index)
         {
@@ -172,8 +254,6 @@ namespace Avalonia.Controls.Selection
             {
                 if (_state.SelectedIndex != index)
                 {
-                    var oldAnchorIndex = AnchorIndex;
-
                     _state.SelectedIndex = index;
 
                     if (reset)
@@ -183,19 +263,12 @@ namespace Avalonia.Controls.Selection
 
                     if (index != -1)
                     {
-                        Ranges?.Add(new IndexRange(index, index));
+                        Ranges?.Add(new IndexRange(index));
                     }
 
                     if (setAnchor)
                     {
                         _state.AnchorIndex = index;
-                    }
-
-                    RaisePropertyChanged();
-
-                    if (oldAnchorIndex != AnchorIndex)
-                    {
-                        RaisePropertyChanged(nameof(AnchorIndex));
                     }
                 }
             }
@@ -206,12 +279,11 @@ namespace Avalonia.Controls.Selection
                     throw new AvaloniaInternalException("Ranges was null but multiple selection is enabled.");
                 }
 
-                IndexRange.Add(Ranges, new IndexRange(index, index));
+                IndexRange.Add(Ranges, new IndexRange(index));
 
                 if (setAnchor && _state.AnchorIndex != index)
                 {
                     _state.AnchorIndex = index;
-                    RaisePropertyChanged(nameof(AnchorIndex));
                 }
             }
         }
@@ -228,7 +300,6 @@ namespace Avalonia.Controls.Selection
             if (SingleSelect && _state.SelectedIndex == index)
             {
                 _state.SelectedIndex = -1;
-                RaisePropertyChanged(nameof(SelectedIndex));
             }
             else
             {
@@ -237,7 +308,7 @@ namespace Avalonia.Controls.Selection
                     throw new AvaloniaInternalException("Ranges was null but multiple selection is enabled.");
                 }
 
-                IndexRange.Remove(Ranges, new IndexRange(index, index));
+                IndexRange.Remove(Ranges, new IndexRange(index));
             }
         }
 
@@ -248,11 +319,13 @@ namespace Avalonia.Controls.Selection
                 throw new AvaloniaInternalException("Cannot trim invalid selections on null source.");
             }
 
+            using var o = new Operation(this);
+
             if (SingleSelect)
             {
                 if (SelectedIndex >= Items.Count)
                 {
-                    SelectedIndex = -1;
+                    ClearSelection();
                 }
             }
             else
@@ -282,7 +355,24 @@ namespace Avalonia.Controls.Selection
         {
             public int AnchorIndex;
             public int SelectedIndex;
+            public ItemsSourceView<T> Items;
             public List<IndexRange>? Ranges;
+        }
+
+        private struct Operation : IDisposable
+        {
+            private readonly SelectionModel<T> _owner;
+
+            public Operation(SelectionModel<T> owner)
+            {
+                _owner = owner;
+                _owner.BeginBatchUpdate();
+            }
+
+            public void Dispose()
+            {
+                _owner.EndBatchUpdate();
+            }
         }
     }
 }
