@@ -10,6 +10,7 @@ namespace Avalonia.Controls.Selection
     {
         private IEnumerable<T> _source;
         private ItemsSourceView<T> _items;
+        private int _anchorIndex;
         private int _selectedIndex;
         private SelectedIndexList _indexes;
 
@@ -22,24 +23,25 @@ namespace Avalonia.Controls.Selection
             Source = source;
         }
 
-        public int SelectedIndex
+        public int AnchorIndex
         {
-            get => _selectedIndex;
+            get => _anchorIndex;
             set
             {
-                value = Math.Max(value, -1);
+                value = CoerceIndex(value);
 
-                if (_items is object && value >= _items.Count)
+                if (_anchorIndex != value)
                 {
-                    value = -1;
-                }
-
-                if (_selectedIndex != value)
-                {
-                    _selectedIndex = value;
+                    _anchorIndex = value;
                     RaisePropertyChanged();
                 }
             }
+        }
+
+        public int SelectedIndex
+        {
+            get => _selectedIndex;
+            set => SelectImpl(value, true);
         }
 
         public IReadOnlyList<int> SelectedIndexes => _indexes ??= new SelectedIndexList(this);
@@ -73,6 +75,52 @@ namespace Avalonia.Controls.Selection
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
+
+        public void Select(int index) => SelectImpl(index, true);
+
+        public void Deselect(int index)
+        {
+            if (SelectedIndex == index)
+            {
+                SelectImpl(-1, false);
+            }
+        }
+
+        private int CoerceIndex(int index)
+        {
+            index = Math.Max(index, -1);
+
+            if (_items is object && index >= _items.Count)
+            {
+                index = -1;
+            }
+
+            return index;
+        }
+
+        private void SelectImpl(int index, bool setAnchor)
+        {
+            index = CoerceIndex(index);
+
+            if (_selectedIndex != index)
+            {
+                var oldAnchorIndex = AnchorIndex;
+                
+                _selectedIndex = index;
+
+                if (setAnchor)
+                {
+                    _anchorIndex = index;
+                }
+                
+                RaisePropertyChanged();
+
+                if (oldAnchorIndex != AnchorIndex)
+                {
+                    RaisePropertyChanged(nameof(AnchorIndex));
+                }
+            }
+        }
 
         private void RaisePropertyChanged([CallerMemberName] string propertyName = null)
         {

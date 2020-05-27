@@ -80,6 +80,74 @@ namespace Avalonia.Controls.UnitTests.Selection
             Assert.Equal("bar", target.SelectedItem);
         }
 
+        [Fact]
+        public void Select_Clears_Old_Selection()
+        {
+            var target = CreateTarget();
+
+            target.SelectedIndex = 0;
+            target.Select(1);
+
+            Assert.Equal(1, target.SelectedIndex);
+            Assert.Equal(new[] { 1 }, target.SelectedIndexes);
+            Assert.Equal("bar", target.SelectedItem);
+        }
+
+        [Fact]
+        public void Deselect_Clears_Current_Selection()
+        {
+            var target = CreateTarget();
+
+            target.SelectedIndex = 0;
+            target.Deselect(0);
+
+            Assert.Equal(-1, target.SelectedIndex);
+            Assert.Empty(target.SelectedIndexes);
+            Assert.Null(target.SelectedItem);
+        }
+
+        [Fact]
+        public void Setting_SelectedIndex_Sets_AnchorIndex()
+        {
+            var target = CreateTarget();
+
+            target.SelectedIndex = 1;
+
+            Assert.Equal(1, target.AnchorIndex);
+        }
+
+        [Fact]
+        public void Setting_SelectedIndex_To_Minus_1_Clears_AnchorIndex()
+        {
+            var target = CreateTarget();
+
+            target.SelectedIndex = 1;
+            target.SelectedIndex = -1;
+
+            Assert.Equal(-1, target.AnchorIndex);
+        }
+
+        [Fact]
+        public void Select_Sets_AnchorIndex()
+        {
+            var target = CreateTarget();
+
+            target.Select(1);
+
+            Assert.Equal(1, target.AnchorIndex);
+        }
+
+        [Fact]
+        public void Deselect_Doesnt_Clear_AnchorIndex()
+        {
+            var target = CreateTarget();
+
+            target.Select(1);
+            target.Deselect(1);
+
+            Assert.Equal(1, target.AnchorIndex);
+        }
+
         private static SelectionModel<string> CreateTarget(bool createData = true)
         {
             var result = new SelectionModel<string> { SingleSelect = true };
