@@ -161,10 +161,64 @@ namespace Avalonia.Controls.Selection
             SelectImpl(index, false, true);
         }
 
+        public void SelectRange(int start, int end)
+        {
+            if (SingleSelect)
+            {
+                throw new InvalidOperationException("Cannot select range with single selection.");
+            }
+
+            using var o = new Operation(this);
+            var max = Items is object ? Items.Count - 1 : int.MaxValue;
+
+            if (start > max)
+            {
+                return;
+            }
+
+            start = Math.Max(start, 0);
+            end = Math.Min(end, max);
+            IndexRange.Add(Ranges!, new IndexRange(start, end));
+
+            if (SelectedIndex == -1)
+            {
+                _state.SelectedIndex = start;
+            }
+
+            if (AnchorIndex == -1)
+            {
+                _state.AnchorIndex = start;
+            }
+        }
+
         public void Deselect(int index)
         {
             using var o = new Operation(this);
             DeselectImpl(index);
+        }
+
+        public void DeselectRange(int start, int end)
+        {
+            using var o = new Operation(this);
+
+            start = Math.Max(start, 0);
+
+            if (SingleSelect)
+            {
+                if (SelectedIndex >= start && SelectedIndex <= end)
+                {
+                    DeselectImpl(SelectedIndex);
+                }
+            }
+            else
+            {
+                IndexRange.Remove(Ranges!, new IndexRange(start, end));
+
+                if (SelectedIndex >= start && SelectedIndex <= end)
+                {
+                    _state.SelectedIndex = Ranges!.Count > 0 ? Ranges[0].Begin : -1;
+                }
+            }
         }
 
         public void BeginBatchUpdate()
@@ -293,9 +347,12 @@ namespace Avalonia.Controls.Selection
                 return;
             }
 
-            if (SingleSelect && _state.SelectedIndex == index)
+            if (SingleSelect)
             {
-                _state.SelectedIndex = -1;
+                if (_state.SelectedIndex == index)
+                {
+                    _state.SelectedIndex = -1;
+                }
             }
             else
             {

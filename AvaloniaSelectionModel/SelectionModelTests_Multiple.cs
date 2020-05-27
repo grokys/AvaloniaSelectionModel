@@ -7,7 +7,7 @@ namespace Avalonia.Controls.UnitTests.Selection
 {
     public class SelectionModelTests_Multiple
     {
-        public class Source
+        public class No_Source
         {
             [Fact]
             public void Can_Select_Multiple_Items_Before_Source_Assigned()
@@ -232,6 +232,74 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
         }
 
+        public class SelectRange
+        {
+            [Fact]
+            public void SelectRange_Selects_Items()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndices);
+                    Assert.Empty(e.DeselectedItems);
+                    Assert.Equal(new[] { 1, 2 }, e.SelectedIndices);
+                    Assert.Equal(new string[] { "bar", "baz" }, e.SelectedItems);
+                    ++raised;
+                };
+
+                target.SelectRange(1, 2);
+
+                Assert.Equal(1, target.SelectedIndex);
+                Assert.Equal(new[] { 1, 2 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new[] { "bar", "baz" }, target.SelectedItems);
+                Assert.Equal(1, target.AnchorIndex);
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void SelectRange_Ignores_Out_Of_Bounds_Items()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndices);
+                    Assert.Empty(e.DeselectedItems);
+                    Assert.Equal(new[] { 1, 2 }, e.SelectedIndices);
+                    Assert.Equal(new string[] { "bar", "baz" }, e.SelectedItems);
+                    ++raised;
+                };
+
+                target.SelectRange(1, 20);
+
+                Assert.Equal(1, target.SelectedIndex);
+                Assert.Equal(new[] { 1, 2 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new[] { "bar", "baz" }, target.SelectedItems);
+                Assert.Equal(1, target.AnchorIndex);
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void SelectRange_Does_Nothing_For_Non_Intersecting_Range()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectionChanged += (s, e) => ++raised;
+
+                target.SelectRange(11, 20);
+
+                Assert.Equal(-1, target.SelectedIndex);
+                Assert.Equal(-1, target.AnchorIndex);
+                Assert.Equal(0, raised);
+            }
+        }
+
         public class Deselect
         {
             [Fact]
@@ -259,6 +327,78 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal("foo", target.SelectedItem);
                 Assert.Equal(new[] { "foo" }, target.SelectedItems);
                 Assert.Equal(1, raised);
+            }
+        }
+
+        public class DeselectRange
+        {
+            [Fact]
+            public void DeselectRange_Clears_Identical_Range()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectRange(1, 2);
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Equal(new[] { 1, 2 }, e.DeselectedIndices);
+                    Assert.Equal(new string[] { "bar", "baz" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndices);
+                    Assert.Empty(e.SelectedItems);
+                    ++raised;
+                };
+
+                target.DeselectRange(1, 2);
+
+                Assert.Equal(-1, target.SelectedIndex);
+                Assert.Empty(target.SelectedIndexes);
+                Assert.Null(target.SelectedItem);
+                Assert.Empty(target.SelectedItems);
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void DeselectRange_Clears_Intersecting_Range()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectRange(1, 2);
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Equal(new[] { 1 }, e.DeselectedIndices);
+                    Assert.Equal(new string[] { "bar" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndices);
+                    Assert.Empty(e.SelectedItems);
+                    ++raised;
+                };
+
+                target.DeselectRange(0, 1);
+
+                Assert.Equal(2, target.SelectedIndex);
+                Assert.Equal(new[] { 2 }, target.SelectedIndexes);
+                Assert.Equal("baz", target.SelectedItem);
+                Assert.Equal(new[] { "baz" }, target.SelectedItems);
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void DeselectRange_Does_Nothing_For_Nonintersecting_Range()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectedIndex = 0;
+                target.SelectionChanged += (s, e) => ++raised;
+                target.DeselectRange(1, 2);
+
+                Assert.Equal(0, target.SelectedIndex);
+                Assert.Equal(new[] { 0 }, target.SelectedIndexes);
+                Assert.Equal("foo", target.SelectedItem);
+                Assert.Equal(new string[] { "foo" }, target.SelectedItems);
+                Assert.Equal(0, raised);
             }
         }
 
@@ -352,6 +492,28 @@ namespace Avalonia.Controls.UnitTests.Selection
 
                 Assert.Equal(1, target.AnchorIndex);
                 Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void SelectRange_Doesnt_Overwrite_AnchorIndex()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.AnchorIndex = 0;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.AnchorIndex))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.SelectRange(1, 2);
+
+                Assert.Equal(0, target.AnchorIndex);
+                Assert.Equal(0, raised);
             }
 
             [Fact]

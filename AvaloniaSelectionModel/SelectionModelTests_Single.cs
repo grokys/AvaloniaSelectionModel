@@ -1,4 +1,5 @@
-﻿using Avalonia.Controls.Selection;
+﻿using System;
+using Avalonia.Controls.Selection;
 using Xunit;
 
 #nullable enable
@@ -7,7 +8,7 @@ namespace Avalonia.Controls.UnitTests.Selection
 {
     public class SelectionModelTests_Single
     {
-        public class Source
+        public class No_Source
         {
             [Fact]
             public void Can_Select_Item_Before_Source_Assigned()
@@ -212,6 +213,17 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
         }
 
+        public class SelectRange
+        {
+            [Fact]
+            public void SelectRange_Throws()
+            {
+                var target = CreateTarget();
+
+                Assert.Throws<InvalidOperationException>(() => target.SelectRange(0, 10));
+            }
+        }
+
         public class Deselect
         {
             [Fact]
@@ -238,6 +250,69 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Null(target.SelectedItem);
                 Assert.Empty(target.SelectedItems);
                 Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void Deselect_Does_Nothing_For_Nonselected_Item()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectedIndex = 1;
+                target.SelectionChanged += (s, e) => ++raised;
+                target.Deselect(0);
+
+                Assert.Equal(1, target.SelectedIndex);
+                Assert.Equal(new[] { 1 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new string[] { "bar" }, target.SelectedItems);
+                Assert.Equal(0, raised);
+            }
+        }
+
+        public class DeselectRange
+        {
+            [Fact]
+            public void DeselectRange_Clears_Current_Selection_For_Intersecting_Range()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectedIndex = 0;
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Equal(new[] { 0 }, e.DeselectedIndices);
+                    Assert.Equal(new string[] { "foo" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndices);
+                    Assert.Empty(e.SelectedItems);
+                    ++raised;
+                };
+
+                target.DeselectRange(0, 2);
+
+                Assert.Equal(-1, target.SelectedIndex);
+                Assert.Empty(target.SelectedIndexes);
+                Assert.Null(target.SelectedItem);
+                Assert.Empty(target.SelectedItems);
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void DeselectRange_Does_Nothing_For_Nonintersecting_Range()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectedIndex = 0;
+                target.SelectionChanged += (s, e) => ++raised;
+                target.DeselectRange(1, 2);
+
+                Assert.Equal(0, target.SelectedIndex);
+                Assert.Equal(new[] { 0 }, target.SelectedIndexes);
+                Assert.Equal("foo", target.SelectedItem);
+                Assert.Equal(new string[] { "foo" }, target.SelectedItems);
+                Assert.Equal(0, raised);
             }
         }
 
