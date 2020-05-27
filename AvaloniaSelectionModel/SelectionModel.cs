@@ -13,30 +13,31 @@ namespace Avalonia.Controls.Selection
     {
         private IEnumerable<T>? _source;
         private bool _singleSelect;
-        private int _anchorIndex;
-        private int _selectedIndex = -1;
         private SelectedIndexes<T>? _selectedIndexes;
         private SelectedItems<T>? _selectedItems;
+        private State _state;
 
         public SelectionModel()
         {
+            _state.SelectedIndex = _state.AnchorIndex = -1;
         }
 
         public SelectionModel(IEnumerable<T> source)
+            : this()
         {
             Source = source;
         }
 
         public int AnchorIndex
         {
-            get => _anchorIndex;
+            get => _state.AnchorIndex;
             set
             {
                 value = CoerceIndex(value);
 
-                if (_anchorIndex != value)
+                if (_state.AnchorIndex != value)
                 {
-                    _anchorIndex = value;
+                    _state.AnchorIndex = value;
                     RaisePropertyChanged();
                 }
             }
@@ -44,7 +45,7 @@ namespace Avalonia.Controls.Selection
 
         public int SelectedIndex
         {
-            get => _selectedIndex;
+            get => _state.SelectedIndex;
             set
             {
                 value = CoerceIndex(value);
@@ -63,7 +64,7 @@ namespace Avalonia.Controls.Selection
         [MaybeNull]
         public T SelectedItem
         {
-            get => (_selectedIndex >= 0 && Items?.Count > _selectedIndex) ? Items[_selectedIndex] : default;
+            get => (_state.SelectedIndex >= 0 && Items?.Count > _state.SelectedIndex) ? Items[_state.SelectedIndex] : default;
         }
 
         public IReadOnlyList<int> SelectedIndexes => _selectedIndexes ??= new SelectedIndexes<T>(this);
@@ -80,15 +81,15 @@ namespace Avalonia.Controls.Selection
 
                     if (_singleSelect)
                     {
-                        Ranges = null;
+                        _state.Ranges = null;
                     }
                     else
                     {
-                        Ranges = new List<IndexRange>();
+                        _state.Ranges = new List<IndexRange>();
 
-                        if (_selectedIndex > 0)
+                        if (_state.SelectedIndex > 0)
                         {
-                            Ranges.Add(new IndexRange(_selectedIndex, _selectedIndex));
+                            _state.Ranges.Add(new IndexRange(_state.SelectedIndex, _state.SelectedIndex));
                         }
                     }
 
@@ -119,24 +120,24 @@ namespace Avalonia.Controls.Selection
         }
 
         internal ItemsSourceView<T>? Items { get; private set; }
-        internal List<IndexRange>? Ranges { get; private set; } = new List<IndexRange>();
+        internal List<IndexRange>? Ranges => _singleSelect ? null : _state.Ranges ??= new List<IndexRange>();
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public void ClearSelection()
         {
-            var oldSelectedIndex = _selectedIndex;
-            var oldAnchorIndex = _anchorIndex;
+            var oldSelectedIndex = _state.SelectedIndex;
+            var oldAnchorIndex = _state.AnchorIndex;
 
-            _selectedIndex = _anchorIndex = -1;
+            _state.SelectedIndex = _state.AnchorIndex = -1;
             Ranges?.Clear();
 
-            if (_selectedIndex !=  oldSelectedIndex)
+            if (_state.SelectedIndex !=  oldSelectedIndex)
             {
                 RaisePropertyChanged(nameof(SelectedIndex));
             }
 
-            if (_anchorIndex != oldAnchorIndex)
+            if (_state.AnchorIndex != oldAnchorIndex)
             {
                 RaisePropertyChanged(nameof(AnchorIndex));
             }
@@ -169,11 +170,11 @@ namespace Avalonia.Controls.Selection
 
             if (SingleSelect || reset || SelectedIndex == -1)
             {
-                if (_selectedIndex != index)
+                if (_state.SelectedIndex != index)
                 {
                     var oldAnchorIndex = AnchorIndex;
 
-                    _selectedIndex = index;
+                    _state.SelectedIndex = index;
 
                     if (reset)
                     {
@@ -187,7 +188,7 @@ namespace Avalonia.Controls.Selection
 
                     if (setAnchor)
                     {
-                        _anchorIndex = index;
+                        _state.AnchorIndex = index;
                     }
 
                     RaisePropertyChanged();
@@ -207,9 +208,9 @@ namespace Avalonia.Controls.Selection
 
                 IndexRange.Add(Ranges, new IndexRange(index, index));
 
-                if (setAnchor && _anchorIndex != index)
+                if (setAnchor && _state.AnchorIndex != index)
                 {
-                    _anchorIndex = index;
+                    _state.AnchorIndex = index;
                     RaisePropertyChanged(nameof(AnchorIndex));
                 }
             }
@@ -224,9 +225,9 @@ namespace Avalonia.Controls.Selection
                 return;
             }
 
-            if (SingleSelect && _selectedIndex == index)
+            if (SingleSelect && _state.SelectedIndex == index)
             {
-                _selectedIndex = -1;
+                _state.SelectedIndex = -1;
                 RaisePropertyChanged(nameof(SelectedIndex));
             }
             else
@@ -266,7 +267,7 @@ namespace Avalonia.Controls.Selection
 
                 if (SelectedIndex >= Items.Count)
                 {
-                    _selectedIndex = Ranges.Count > 0 ? Ranges[0].Begin : -1;
+                    _state.SelectedIndex = Ranges.Count > 0 ? Ranges[0].Begin : -1;
                     RaisePropertyChanged(nameof(SelectedIndex));
                 }
             }
@@ -275,6 +276,13 @@ namespace Avalonia.Controls.Selection
         private void RaisePropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private struct State
+        {
+            public int AnchorIndex;
+            public int SelectedIndex;
+            public List<IndexRange>? Ranges;
         }
     }
 }
