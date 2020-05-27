@@ -150,6 +150,17 @@ namespace Avalonia.Controls.UnitTests.Selection
             Assert.Equal(1, target.AnchorIndex);
         }
 
+        [Fact]
+        public void Converting_To_Multiple_Selection_Preserves_Selection()
+        {
+            var target = CreateTarget();
+
+            target.SelectedIndex = 1;
+            target.SingleSelect = false;
+
+            Assert.Equal(1, target.SelectedIndex);
+        }
+
         private static SelectionModel<string> CreateTarget(bool createData = true)
         {
             var result = new SelectionModel<string> { SingleSelect = true };

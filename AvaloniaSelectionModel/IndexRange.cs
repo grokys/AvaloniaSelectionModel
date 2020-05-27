@@ -87,6 +87,25 @@ namespace Avalonia.Controls
         public static bool operator ==(IndexRange left, IndexRange right) => left.Equals(right);
         public static bool operator !=(IndexRange left, IndexRange right) => !(left == right);
 
+        public static int GetAt(IList<IndexRange> ranges, int index)
+        {
+            var currentIndex = 0;
+
+            foreach (var range in ranges)
+            {
+                var currentCount = range.Count;
+
+                if (index >= currentIndex && index < currentIndex + currentCount)
+                {
+                    return range.Begin + (index - currentIndex);
+                }
+
+                currentIndex += currentCount;
+            }
+
+            throw new IndexOutOfRangeException("The index was out of range.");
+        }
+
         public static int Add(
             IList<IndexRange> ranges,
             IndexRange range,

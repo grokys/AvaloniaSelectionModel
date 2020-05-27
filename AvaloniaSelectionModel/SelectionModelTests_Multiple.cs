@@ -37,6 +37,20 @@ namespace Avalonia.Controls.UnitTests.Selection
         }
 
         [Fact]
+        public void Initializing_Source_Coerces_SelectedIndex()
+        {
+            var target = CreateTarget(false);
+
+            target.SelectedIndex = 100;
+            target.Select(2);
+            target.Source = new[] { "foo", "bar", "baz" };
+
+            Assert.Equal(2, target.SelectedIndex);
+            Assert.Equal(new[] { 2 }, target.SelectedIndexes);
+            Assert.Equal("baz", target.SelectedItem);
+        }
+
+        [Fact]
         public void SelectedIndex_Larger_Than_Source_Clears_Selection()
         {
             var target = CreateTarget();
@@ -84,7 +98,20 @@ namespace Avalonia.Controls.UnitTests.Selection
 
             Assert.Equal(0, target.SelectedIndex);
             Assert.Equal(new[] { 0, 1 }, target.SelectedIndexes);
-            Assert.Equal("bar", target.SelectedItem);
+            Assert.Equal("foo", target.SelectedItem);
+        }
+
+        [Fact]
+        public void Select_With_Invalid_Index_Does_Nothing()
+        {
+            var target = CreateTarget();
+
+            target.SelectedIndex = 0;
+            target.Select(5);
+
+            Assert.Equal(0, target.SelectedIndex);
+            Assert.Equal(new[] { 0 }, target.SelectedIndexes);
+            Assert.Equal("foo", target.SelectedItem);
         }
 
         [Fact]
@@ -98,7 +125,7 @@ namespace Avalonia.Controls.UnitTests.Selection
 
             Assert.Equal(0, target.SelectedIndex);
             Assert.Equal(new[] { 0 }, target.SelectedIndexes);
-            Assert.Null(target.SelectedItem);
+            Assert.Equal("foo", target.SelectedItem);
         }
 
         [Fact]

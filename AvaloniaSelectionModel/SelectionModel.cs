@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 #nullable enable
@@ -13,9 +13,10 @@ namespace Avalonia.Controls.Selection
     {
         private IEnumerable<T>? _source;
         private ItemsSourceView<T>? _items;
+        private bool _singleSelect;
         private int _anchorIndex;
-        private int _selectedIndex;
-        private SelectedIndexList? _indexes;
+        private int _selectedIndex = -1;
+        private SelectedIndexes<T>? _indexes;
 
         public SelectionModel()
         {
@@ -44,18 +45,46 @@ namespace Avalonia.Controls.Selection
         public int SelectedIndex
         {
             get => _selectedIndex;
-            set => SelectImpl(value, true);
+            set
+            {
+                value = CoerceIndex(value);
+
+                if (value >= 0)
+                {
+                    SelectImpl(value, true, true);
+                }
+                else if (SingleSelect && value >= 0)
+                {
+                    DeselectImpl(SelectedIndex);
+                }
+                else
+                {
+                    ClearSelection();
+                }
+            }
         }
 
-        public IReadOnlyList<int> SelectedIndexes => _indexes ??= new SelectedIndexList(this);
+        public IReadOnlyList<int> SelectedIndexes => _indexes ??= new SelectedIndexes<T>(this);
 
         [MaybeNull]
         public T SelectedItem
         {
-            get => (_selectedIndex > 0 && _items?.Count > _selectedIndex) ? _items[_selectedIndex] : default;
+            get => (_selectedIndex >= 0 && _items?.Count > _selectedIndex) ? _items[_selectedIndex] : default;
         }
 
-        public bool SingleSelect { get; set; }
+        public bool SingleSelect 
+        {
+            get => _singleSelect;
+            set
+            {
+                if (_singleSelect != value)
+                {
+                    _singleSelect = value;
+                    Ranges = _singleSelect ? null : new List<IndexRange>();
+                    RaisePropertyChanged();
+                }
+            }
+        }
 
         public IEnumerable<T>? Source 
         {
@@ -68,9 +97,9 @@ namespace Avalonia.Controls.Selection
                     _items?.Dispose();
                     _items = ItemsSourceView<T>.Create(value);
 
-                    if (_items != null && _selectedIndex >= _items.Count)
+                    if (_items != null)
                     {
-                        SelectedIndex = -1;
+                        TrimInvalidSelections();
                     }
 
                     RaisePropertyChanged();
@@ -78,17 +107,32 @@ namespace Avalonia.Controls.Selection
             }
         }
 
+        internal List<IndexRange>? Ranges { get; private set; } = new List<IndexRange>();
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public void Select(int index) => SelectImpl(index, true);
-
-        public void Deselect(int index)
+        public void ClearSelection()
         {
-            if (SelectedIndex == index)
+            var oldSelectedIndex = _selectedIndex;
+            var oldAnchorIndex = _anchorIndex;
+
+            _selectedIndex = _anchorIndex = -1;
+            Ranges?.Clear();
+
+            if (_selectedIndex !=  oldSelectedIndex)
             {
-                SelectImpl(-1, false);
+                RaisePropertyChanged(nameof(SelectedIndex));
+            }
+
+            if (_anchorIndex != oldAnchorIndex)
+            {
+                RaisePropertyChanged(nameof(AnchorIndex));
             }
         }
+
+        public void Select(int index) => SelectImpl(index, false, true);
+
+        public void Deselect(int index) => DeselectImpl(index);
 
         private int CoerceIndex(int index)
         {
@@ -102,26 +146,116 @@ namespace Avalonia.Controls.Selection
             return index;
         }
 
-        private void SelectImpl(int index, bool setAnchor)
+        private void SelectImpl(int index, bool reset, bool setAnchor)
+        {
+            if (index == -1)
+            {
+                throw new AvaloniaInternalException("Cannot select index -1.");
+            }
+
+            index = CoerceIndex(index);
+
+            if (SingleSelect || reset || SelectedIndex == -1)
+            {
+                if (_selectedIndex != index)
+                {
+                    var oldAnchorIndex = AnchorIndex;
+
+                    _selectedIndex = index;
+
+                    if (reset)
+                    {
+                        Ranges?.Clear();
+                    }
+
+                    if (index != -1)
+                    {
+                        Ranges?.Add(new IndexRange(index, index));
+                    }
+
+                    if (setAnchor)
+                    {
+                        _anchorIndex = index;
+                    }
+
+                    RaisePropertyChanged();
+
+                    if (oldAnchorIndex != AnchorIndex)
+                    {
+                        RaisePropertyChanged(nameof(AnchorIndex));
+                    }
+                }
+            }
+            else if (index >= 0)
+            {
+                if (Ranges is null)
+                {
+                    throw new AvaloniaInternalException("Ranges was null but multiple selection is enabled.");
+                }
+
+                IndexRange.Add(Ranges, new IndexRange(index, index));
+
+                if (setAnchor && _anchorIndex != index)
+                {
+                    _anchorIndex = index;
+                    RaisePropertyChanged(nameof(AnchorIndex));
+                }
+            }
+        }
+
+        private void DeselectImpl(int index)
         {
             index = CoerceIndex(index);
 
-            if (_selectedIndex != index)
+            if (index == -1)
             {
-                var oldAnchorIndex = AnchorIndex;
-                
-                _selectedIndex = index;
+                return;
+            }
 
-                if (setAnchor)
+            if (SingleSelect && _selectedIndex == index)
+            {
+                _selectedIndex = -1;
+                RaisePropertyChanged(nameof(SelectedIndex));
+            }
+            else
+            {
+                if (Ranges is null)
                 {
-                    _anchorIndex = index;
+                    throw new AvaloniaInternalException("Ranges was null but multiple selection is enabled.");
                 }
-                
-                RaisePropertyChanged();
 
-                if (oldAnchorIndex != AnchorIndex)
+                IndexRange.Remove(Ranges, new IndexRange(index, index));
+            }
+        }
+
+        private void TrimInvalidSelections()
+        {
+            if (_items is null)
+            {
+                throw new AvaloniaInternalException("Cannot trim invalid selections on null source.");
+            }
+
+            if (SingleSelect)
+            {
+                if (SelectedIndex >= _items.Count)
                 {
-                    RaisePropertyChanged(nameof(AnchorIndex));
+                    SelectedIndex = -1;
+                }
+            }
+            else
+            {
+                if (Ranges is null)
+                {
+                    throw new AvaloniaInternalException("Ranges was null but multiple selection is enabled.");
+                }
+
+                var validRange = new IndexRange(0, _items.Count - 1);
+                IndexRange.Intersect(Ranges, validRange);
+
+                if (SelectedIndex >= _items.Count)
+                {
+                    _selectedIndex = Ranges.Count > 0 ? Ranges[0].Begin : -1;
+                    RaisePropertyChanged(nameof(SelectedIndex));
                 }
             }
         }
@@ -129,38 +263,6 @@ namespace Avalonia.Controls.Selection
         private void RaisePropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        private class SelectedIndexList : IReadOnlyList<int>
-        {
-            private readonly SelectionModel<T> _owner;
-
-            public SelectedIndexList(SelectionModel<T> owner) => _owner = owner;
-
-            public int this[int index]
-            {
-                get
-                {
-                    if (index != 0 || _owner.SelectedIndex == -1)
-                    {
-                        throw new IndexOutOfRangeException("The index was out of range.");
-                    }
-
-                    return _owner.SelectedIndex;
-                }
-            }
-
-            public int Count => _owner.SelectedIndex >= 0 ? 1 : 0;
-
-            public IEnumerator<int> GetEnumerator()
-            {
-                if (_owner.SelectedIndex != -1)
-                {
-                    yield return _owner.SelectedIndex;
-                }
-            }
-
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
     }
 }
