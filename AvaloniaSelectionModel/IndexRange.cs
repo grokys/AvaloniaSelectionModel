@@ -251,6 +251,28 @@ namespace Avalonia.Controls
             return result;
         }
 
+        public static (int removedCount, bool shifted) RemoveAndAdjust(
+            IList<IndexRange> ranges,
+            IndexRange range)
+        {
+            var removed = Remove(ranges, range);
+            var shifted = false;
+
+            for (var i = 0; i < ranges.Count; ++i)
+            {
+                var existing = ranges[i];
+                var count = range.Count;
+
+                if (existing.End > range.Begin)
+                {
+                    ranges[i] = new IndexRange(existing.Begin - count, existing.End - count);
+                    shifted = true;
+                }
+            }
+
+            return (removed, shifted);
+        }
+
         public static IEnumerable<IndexRange> Subtract(
             IndexRange lhs,
             IEnumerable<IndexRange> rhs)

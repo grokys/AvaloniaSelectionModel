@@ -1,4 +1,6 @@
-﻿using Avalonia.Controls.Selection;
+﻿using System.Collections.ObjectModel;
+using Avalonia.Collections;
+using Avalonia.Controls.Selection;
 using Xunit;
 
 #nullable enable
@@ -117,7 +119,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                     ++raised;
                 };
 
-                target.SelectedIndex = 5;
+                target.SelectedIndex = 15;
 
                 Assert.Equal(-1, target.SelectedIndex);
                 Assert.Empty(target.SelectedIndexes);
@@ -209,7 +211,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 target.PropertyChanged += (s, e) => ++raised;
                 target.SelectionChanged += (s, e) => ++raised;
 
-                target.Select(5);
+                target.Select(15);
 
                 Assert.Equal(0, target.SelectedIndex);
                 Assert.Equal(new[] { 0 }, target.SelectedIndexes);
@@ -269,18 +271,18 @@ namespace Avalonia.Controls.UnitTests.Selection
                 {
                     Assert.Empty(e.DeselectedIndices);
                     Assert.Empty(e.DeselectedItems);
-                    Assert.Equal(new[] { 1, 2 }, e.SelectedIndices);
-                    Assert.Equal(new string[] { "bar", "baz" }, e.SelectedItems);
+                    Assert.Equal(new[] { 11, 12 }, e.SelectedIndices);
+                    Assert.Equal(new string[] { "xyzzy", "thud" }, e.SelectedItems);
                     ++raised;
                 };
 
-                target.SelectRange(1, 20);
+                target.SelectRange(11, 20);
 
-                Assert.Equal(1, target.SelectedIndex);
-                Assert.Equal(new[] { 1, 2 }, target.SelectedIndexes);
-                Assert.Equal("bar", target.SelectedItem);
-                Assert.Equal(new[] { "bar", "baz" }, target.SelectedItems);
-                Assert.Equal(1, target.AnchorIndex);
+                Assert.Equal(11, target.SelectedIndex);
+                Assert.Equal(new[] { 11, 12 }, target.SelectedIndexes);
+                Assert.Equal("xyzzy", target.SelectedItem);
+                Assert.Equal(new[] { "xyzzy", "thud" }, target.SelectedItems);
+                Assert.Equal(11, target.AnchorIndex);
                 Assert.Equal(1, raised);
             }
 
@@ -292,7 +294,7 @@ namespace Avalonia.Controls.UnitTests.Selection
 
                 target.SelectionChanged += (s, e) => ++raised;
 
-                target.SelectRange(11, 20);
+                target.SelectRange(18, 30);
 
                 Assert.Equal(-1, target.SelectedIndex);
                 Assert.Equal(-1, target.AnchorIndex);
@@ -540,13 +542,279 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
         }
 
+        public class CollectionChanges
+        {
+            [Fact]
+            public void Removing_Selected_Item_Updates_State()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var selectedIndexRaised = 0;
+
+                target.Source = data;
+                target.Select(1);
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndex))
+                    {
+                        ++selectedIndexRaised;
+                    }
+                };
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndices);
+                    Assert.Equal(new[] { "bar" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndices);
+                    Assert.Empty(e.SelectedItems);
+                    ++selectionChangedRaised;
+                };
+
+                data.RemoveAt(1);
+
+                Assert.Equal(-1, target.SelectedIndex);
+                Assert.Empty(target.SelectedIndexes);
+                Assert.Null(target.SelectedItem);
+                Assert.Empty(target.SelectedItems);
+                Assert.Equal(-1, target.AnchorIndex);
+                Assert.Equal(1, selectionChangedRaised);
+                Assert.Equal(1, selectedIndexRaised);
+            }
+
+            [Fact]
+            public void Removing_Unselected_Item_Before_Selected_Item_Updates_Indexes()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var indexesChangedraised = 0;
+
+                target.SelectedIndex = 1;
+
+                target.SelectionChanged += (s, e) => ++selectionChangedRaised;
+
+                target.IndexesChanged += (s, e) =>
+                {
+                    Assert.Equal(0, e.StartIndex);
+                    Assert.Equal(-1, e.Delta);
+                    ++indexesChangedraised;
+                };
+
+                data.RemoveAt(0);
+
+                Assert.Equal(0, target.SelectedIndex);
+                Assert.Equal(new[] { 0 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
+                Assert.Equal(0, target.AnchorIndex);
+                Assert.Equal(1, indexesChangedraised);
+                Assert.Equal(0, selectionChangedRaised);
+            }
+
+            [Fact]
+            public void Removing_Unselected_Item_After_Selected_Doesnt_Raise_Events()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var raised = 0;
+
+                target.SelectedIndex = 1;
+
+                target.PropertyChanged += (s, e) => ++raised;
+                target.SelectionChanged += (s, e) => ++raised;
+                target.IndexesChanged += (s, e) => ++raised;
+
+                data.RemoveAt(2);
+
+                Assert.Equal(1, target.SelectedIndex);
+                Assert.Equal(new[] { 1 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new string[] { "bar" }, target.SelectedItems);
+                Assert.Equal(1, target.AnchorIndex);
+                Assert.Equal(0, raised);
+            }
+
+            [Fact]
+            public void Removing_Selected_Range_Raises_Events()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var selectedIndexRaised = 0;
+
+                target.Source = data;
+                target.SelectRange(4, 8);
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndex))
+                    {
+                        ++selectedIndexRaised;
+                    }
+                };
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndices);
+                    Assert.Equal(new[] { "quux", "corge", "grault", "garply", "waldo" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndices);
+                    Assert.Empty(e.SelectedItems);
+                    ++selectionChangedRaised;
+                };
+
+                data.RemoveRange(4, 5);
+
+                Assert.Equal(-1, target.SelectedIndex);
+                Assert.Empty(target.SelectedIndexes);
+                Assert.Null(target.SelectedItem);
+                Assert.Empty(target.SelectedItems);
+                Assert.Equal(-1, target.AnchorIndex);
+                Assert.Equal(1, selectionChangedRaised);
+                Assert.Equal(1, selectedIndexRaised);
+            }
+
+            [Fact]
+            public void Removing_Partial_Selected_Range_Raises_Events_1()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var selectedIndexRaised = 0;
+
+                target.Source = data;
+                target.SelectRange(4, 8);
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndex))
+                    {
+                        ++selectedIndexRaised;
+                    }
+                };
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndices);
+                    Assert.Equal(new[] { "quux", "corge", "grault" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndices);
+                    Assert.Empty(e.SelectedItems);
+                    ++selectionChangedRaised;
+                };
+
+                data.RemoveRange(0, 7);
+
+                Assert.Equal(0, target.SelectedIndex);
+                Assert.Equal(new[] { 0, 1 }, target.SelectedIndexes);
+                Assert.Equal("garply", target.SelectedItem);
+                Assert.Equal(new[] { "garply", "waldo" }, target.SelectedItems);
+                Assert.Equal(0, target.AnchorIndex);
+                Assert.Equal(1, selectionChangedRaised);
+                Assert.Equal(1, selectedIndexRaised);
+            }
+
+            [Fact]
+            public void Removing_Partial_Selected_Range_Raises_Events_2()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var selectedIndexRaised = 0;
+
+                target.Source = data;
+                target.SelectRange(4, 8);
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndex))
+                    {
+                        ++selectedIndexRaised;
+                    }
+                };
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndices);
+                    Assert.Equal(new[] { "garply", "waldo" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndices);
+                    Assert.Empty(e.SelectedItems);
+                    ++selectionChangedRaised;
+                };
+
+                data.RemoveRange(7, 3);
+
+                Assert.Equal(4, target.SelectedIndex);
+                Assert.Equal(new[] { 4, 5, 6 }, target.SelectedIndexes);
+                Assert.Equal("quux", target.SelectedItem);
+                Assert.Equal(new[] { "quux", "corge", "grault" }, target.SelectedItems);
+                Assert.Equal(4, target.AnchorIndex);
+                Assert.Equal(1, selectionChangedRaised);
+                Assert.Equal(0, selectedIndexRaised);
+            }
+
+            [Fact]
+            public void Removing_Partial_Selected_Range_Raises_Events_3()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var selectedIndexRaised = 0;
+
+                target.Source = data;
+                target.SelectRange(4, 8);
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndex))
+                    {
+                        ++selectedIndexRaised;
+                    }
+                };
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndices);
+                    Assert.Equal(new[] { "corge", "grault", "garply" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndices);
+                    Assert.Empty(e.SelectedItems);
+                    ++selectionChangedRaised;
+                };
+
+                data.RemoveRange(5, 3);
+
+                Assert.Equal(4, target.SelectedIndex);
+                Assert.Equal(new[] { 4, 5 }, target.SelectedIndexes);
+                Assert.Equal("quux", target.SelectedItem);
+                Assert.Equal(new[] { "quux", "waldo" }, target.SelectedItems);
+                Assert.Equal(4, target.AnchorIndex);
+                Assert.Equal(1, selectionChangedRaised);
+                Assert.Equal(0, selectedIndexRaised);
+            }
+        }
+
         private static SelectionModel<string> CreateTarget(bool createData = true)
         {
             var result = new SelectionModel<string> { SingleSelect = false };
 
             if (createData)
             {
-                result.Source = new[] { "foo", "bar", "baz" };
+                result.Source = new AvaloniaList<string>
+                {
+                    "foo",
+                    "bar",
+                    "baz",
+                    "qux",
+                    "quux",
+                    "corge",
+                    "grault",
+                    "garply",
+                    "waldo",
+                    "fred",
+                    "plugh",
+                    "xyzzy",
+                    "thud"
+                };
             }
 
             return result;

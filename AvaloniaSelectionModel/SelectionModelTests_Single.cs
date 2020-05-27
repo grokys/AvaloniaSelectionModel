@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.ObjectModel;
+using Avalonia.Collections;
 using Avalonia.Controls.Selection;
 using Xunit;
 
@@ -450,13 +452,108 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
         }
 
+        public class CollectionChanges
+        {
+            [Fact]
+            public void Removing_Selected_Item_Updates_State()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var selectedIndexRaised = 0;
+
+                target.Source = data;
+                target.Select(1);
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndex))
+                    {
+                        ++selectedIndexRaised;
+                    }
+                };
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndices);
+                    Assert.Equal(new[] { "bar" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndices);
+                    Assert.Empty(e.SelectedItems);
+                    ++selectionChangedRaised;
+                };
+
+                data.RemoveAt(1);
+
+                Assert.Equal(-1, target.SelectedIndex);
+                Assert.Empty(target.SelectedIndexes);
+                Assert.Null(target.SelectedItem);
+                Assert.Empty(target.SelectedItems);
+                Assert.Equal(-1, target.AnchorIndex);
+                Assert.Equal(1, selectionChangedRaised);
+                Assert.Equal(1, selectedIndexRaised);
+            }
+
+            [Fact]
+            public void Removing_Unselected_Item_Before_Selected_Item_Updates_Indexes()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var indexesChangedraised = 0;
+
+                target.SelectedIndex = 1;
+
+                target.SelectionChanged += (s, e) => ++selectionChangedRaised;
+
+                target.IndexesChanged += (s, e) =>
+                {
+                    Assert.Equal(0, e.StartIndex);
+                    Assert.Equal(-1, e.Delta);
+                    ++indexesChangedraised;
+                };
+
+                data.RemoveAt(0);
+
+                Assert.Equal(0, target.SelectedIndex);
+                Assert.Equal(new[] { 0 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
+                Assert.Equal(0, target.AnchorIndex);
+                Assert.Equal(1, indexesChangedraised);
+                Assert.Equal(0, selectionChangedRaised);
+            }
+
+            [Fact]
+            public void Removing_Unselected_Item_After_Selected_Doesnt_Raise_Events()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var raised = 0;
+
+                target.SelectedIndex = 1;
+
+                target.PropertyChanged += (s, e) => ++raised;
+                target.SelectionChanged += (s, e) => ++raised;
+                target.IndexesChanged += (s, e) => ++raised;
+
+                data.RemoveAt(2);
+
+                Assert.Equal(1, target.SelectedIndex);
+                Assert.Equal(new[] { 1 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new string[] { "bar" }, target.SelectedItems);
+                Assert.Equal(1, target.AnchorIndex);
+                Assert.Equal(0, raised);
+            }
+        }
+
         private static SelectionModel<string> CreateTarget(bool createData = true)
         {
             var result = new SelectionModel<string> { SingleSelect = true };
 
             if (createData)
             {
-                result.Source = new[] { "foo", "bar", "baz" };
+                result.Source = new AvaloniaList<string> { "foo", "bar", "baz" };
             }
 
             return result;
