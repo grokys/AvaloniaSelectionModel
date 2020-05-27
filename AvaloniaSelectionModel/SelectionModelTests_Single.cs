@@ -16,6 +16,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             
             Assert.Equal(5, target.SelectedIndex);
             Assert.Null(target.SelectedItem);
+            Assert.Equal(new string?[] { null }, target.SelectedItems);
         }
 
         [Fact]
@@ -29,6 +30,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             Assert.Equal(1, target.SelectedIndex);
             Assert.Equal(new[] { 1 }, target.SelectedIndexes);
             Assert.Equal("bar", target.SelectedItem);
+            Assert.Equal(new string[] { "bar" }, target.SelectedItems);
         }
 
         [Fact]
@@ -42,6 +44,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             Assert.Equal(-1, target.SelectedIndex);
             Assert.Empty(target.SelectedIndexes);
             Assert.Null(target.SelectedItem);
+            Assert.Empty(target.SelectedItems);
         }
 
         [Fact]
@@ -55,6 +58,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             Assert.Equal(-1, target.SelectedIndex);
             Assert.Empty(target.SelectedIndexes);
             Assert.Null(target.SelectedItem);
+            Assert.Empty(target.SelectedItems);
         }
 
         [Fact]
@@ -67,6 +71,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             Assert.Equal(-1, target.SelectedIndex);
             Assert.Empty(target.SelectedIndexes);
             Assert.Null(target.SelectedItem);
+            Assert.Empty(target.SelectedItems);
         }
 
         [Fact]
@@ -80,6 +85,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             Assert.Equal(1, target.SelectedIndex);
             Assert.Equal(new[] { 1 }, target.SelectedIndexes);
             Assert.Equal("bar", target.SelectedItem);
+            Assert.Equal(new string[] { "bar" }, target.SelectedItems);
         }
 
         [Fact]
@@ -93,6 +99,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             Assert.Equal(1, target.SelectedIndex);
             Assert.Equal(new[] { 1 }, target.SelectedIndexes);
             Assert.Equal("bar", target.SelectedItem);
+            Assert.Equal(new string[] { "bar" }, target.SelectedItems);
         }
 
         [Fact]
@@ -106,6 +113,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             Assert.Equal(-1, target.SelectedIndex);
             Assert.Empty(target.SelectedIndexes);
             Assert.Null(target.SelectedItem);
+            Assert.Empty(target.SelectedItems);
         }
 
         [Fact]
@@ -159,6 +167,9 @@ namespace Avalonia.Controls.UnitTests.Selection
             target.SingleSelect = false;
 
             Assert.Equal(1, target.SelectedIndex);
+            Assert.Equal(new[] { 1 }, target.SelectedIndexes);
+            Assert.Equal("bar", target.SelectedItem);
+            Assert.Equal(new string[] { "bar" }, target.SelectedItems);
         }
 
         private static SelectionModel<string> CreateTarget(bool createData = true)

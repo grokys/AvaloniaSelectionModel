@@ -12,11 +12,11 @@ namespace Avalonia.Controls.Selection
     public class SelectionModel<T> : INotifyPropertyChanged
     {
         private IEnumerable<T>? _source;
-        private ItemsSourceView<T>? _items;
         private bool _singleSelect;
         private int _anchorIndex;
         private int _selectedIndex = -1;
-        private SelectedIndexes<T>? _indexes;
+        private SelectedIndexes<T>? _selectedIndexes;
+        private SelectedItems<T>? _selectedItems;
 
         public SelectionModel()
         {
@@ -53,10 +53,6 @@ namespace Avalonia.Controls.Selection
                 {
                     SelectImpl(value, true, true);
                 }
-                else if (SingleSelect && value >= 0)
-                {
-                    DeselectImpl(SelectedIndex);
-                }
                 else
                 {
                     ClearSelection();
@@ -64,13 +60,14 @@ namespace Avalonia.Controls.Selection
             }
         }
 
-        public IReadOnlyList<int> SelectedIndexes => _indexes ??= new SelectedIndexes<T>(this);
-
         [MaybeNull]
         public T SelectedItem
         {
-            get => (_selectedIndex >= 0 && _items?.Count > _selectedIndex) ? _items[_selectedIndex] : default;
+            get => (_selectedIndex >= 0 && Items?.Count > _selectedIndex) ? Items[_selectedIndex] : default;
         }
+
+        public IReadOnlyList<int> SelectedIndexes => _selectedIndexes ??= new SelectedIndexes<T>(this);
+        public IReadOnlyList<T> SelectedItems => _selectedItems ??= new SelectedItems<T>(this);
 
         public bool SingleSelect 
         {
@@ -80,7 +77,21 @@ namespace Avalonia.Controls.Selection
                 if (_singleSelect != value)
                 {
                     _singleSelect = value;
-                    Ranges = _singleSelect ? null : new List<IndexRange>();
+
+                    if (_singleSelect)
+                    {
+                        Ranges = null;
+                    }
+                    else
+                    {
+                        Ranges = new List<IndexRange>();
+
+                        if (_selectedIndex > 0)
+                        {
+                            Ranges.Add(new IndexRange(_selectedIndex, _selectedIndex));
+                        }
+                    }
+
                     RaisePropertyChanged();
                 }
             }
@@ -94,10 +105,10 @@ namespace Avalonia.Controls.Selection
                 if (_source != value)
                 {
                     _source = value;
-                    _items?.Dispose();
-                    _items = ItemsSourceView<T>.Create(value);
+                    Items?.Dispose();
+                    Items = ItemsSourceView<T>.Create(value);
 
-                    if (_items != null)
+                    if (Items != null)
                     {
                         TrimInvalidSelections();
                     }
@@ -107,6 +118,7 @@ namespace Avalonia.Controls.Selection
             }
         }
 
+        internal ItemsSourceView<T>? Items { get; private set; }
         internal List<IndexRange>? Ranges { get; private set; } = new List<IndexRange>();
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -138,7 +150,7 @@ namespace Avalonia.Controls.Selection
         {
             index = Math.Max(index, -1);
 
-            if (_items is object && index >= _items.Count)
+            if (Items is object && index >= Items.Count)
             {
                 index = -1;
             }
@@ -230,14 +242,14 @@ namespace Avalonia.Controls.Selection
 
         private void TrimInvalidSelections()
         {
-            if (_items is null)
+            if (Items is null)
             {
                 throw new AvaloniaInternalException("Cannot trim invalid selections on null source.");
             }
 
             if (SingleSelect)
             {
-                if (SelectedIndex >= _items.Count)
+                if (SelectedIndex >= Items.Count)
                 {
                     SelectedIndex = -1;
                 }
@@ -249,10 +261,10 @@ namespace Avalonia.Controls.Selection
                     throw new AvaloniaInternalException("Ranges was null but multiple selection is enabled.");
                 }
 
-                var validRange = new IndexRange(0, _items.Count - 1);
+                var validRange = new IndexRange(0, Items.Count - 1);
                 IndexRange.Intersect(Ranges, validRange);
 
-                if (SelectedIndex >= _items.Count)
+                if (SelectedIndex >= Items.Count)
                 {
                     _selectedIndex = Ranges.Count > 0 ? Ranges[0].Begin : -1;
                     RaisePropertyChanged(nameof(SelectedIndex));

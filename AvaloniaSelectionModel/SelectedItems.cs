@@ -1,19 +1,21 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 #nullable enable
 
 namespace Avalonia.Controls.Selection
 {
-    internal class SelectedIndexes<T> : IReadOnlyList<int>
+    internal class SelectedItems<T> : IReadOnlyList<T>
     {
         private readonly SelectionModel<T> _owner;
 
-        public SelectedIndexes(SelectionModel<T> owner) => _owner = owner;
+        public SelectedItems(SelectionModel<T> owner) => _owner = owner;
 
-        public int this[int index]
+        [MaybeNull]
+        public T this[int index]
         {
             get
             {
@@ -24,11 +26,15 @@ namespace Avalonia.Controls.Selection
 
                 if (_owner.SingleSelect)
                 {
-                    return _owner.SelectedIndex;
+                    return _owner.SelectedItem;
+                }
+                else if (_owner.Items is object)
+                {
+                    return _owner.Items[index];
                 }
                 else
                 {
-                    return IndexRange.GetAt(_owner.Ranges!, index);
+                    return default;
                 }
             }
         }
@@ -48,19 +54,14 @@ namespace Avalonia.Controls.Selection
             }
         }
 
-        public IEnumerator<int> GetEnumerator()
+        public IEnumerator<T> GetEnumerator()
         {
-            IEnumerator<int> SingleSelect()
+            if (_owner.SingleSelect)
             {
                 if (_owner.SelectedIndex >= 0)
                 {
-                    yield return _owner.SelectedIndex;
+                    yield return _owner.SelectedItem;
                 }
-            }
-
-            if (_owner.SingleSelect)
-            {
-                return SingleSelect();
             }
             else
             {
@@ -69,7 +70,15 @@ namespace Avalonia.Controls.Selection
                     throw new AvaloniaInternalException("Ranges was null but multiple selection is enabled.");
                 }
 
-                return IndexRange.EnumerateIndices(_owner.Ranges).GetEnumerator();
+                var items = _owner.Items;
+
+                foreach (var range in _owner.Ranges)
+                {
+                    for (var i = range.Begin; i <= range.End; ++i)
+                    {
+                        yield return items != null ? items[i] : default;
+                    }
+                }
             }
         }
 
