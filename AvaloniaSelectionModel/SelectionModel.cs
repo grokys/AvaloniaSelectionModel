@@ -2,17 +2,20 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+
+#nullable enable
 
 namespace Avalonia.Controls.Selection
 {
     public class SelectionModel<T> : INotifyPropertyChanged
     {
-        private IEnumerable<T> _source;
-        private ItemsSourceView<T> _items;
+        private IEnumerable<T>? _source;
+        private ItemsSourceView<T>? _items;
         private int _anchorIndex;
         private int _selectedIndex;
-        private SelectedIndexList _indexes;
+        private SelectedIndexList? _indexes;
 
         public SelectionModel()
         {
@@ -46,6 +49,7 @@ namespace Avalonia.Controls.Selection
 
         public IReadOnlyList<int> SelectedIndexes => _indexes ??= new SelectedIndexList(this);
 
+        [MaybeNull]
         public T SelectedItem
         {
             get => (_selectedIndex > 0 && _items?.Count > _selectedIndex) ? _items[_selectedIndex] : default;
@@ -53,7 +57,7 @@ namespace Avalonia.Controls.Selection
 
         public bool SingleSelect { get; set; }
 
-        public IEnumerable<T> Source 
+        public IEnumerable<T>? Source 
         {
             get => _source;
             set
@@ -74,7 +78,7 @@ namespace Avalonia.Controls.Selection
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
         public void Select(int index) => SelectImpl(index, true);
 
@@ -122,7 +126,7 @@ namespace Avalonia.Controls.Selection
             }
         }
 
-        private void RaisePropertyChanged([CallerMemberName] string propertyName = null)
+        private void RaisePropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
