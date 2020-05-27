@@ -5,6 +5,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
 
 #nullable enable
 
@@ -261,6 +263,29 @@ namespace Avalonia.Controls
             }
 
             return result;
+        }
+
+        public static void Diff(
+            IReadOnlyList<IndexRange> start,
+            IReadOnlyList<IndexRange> end,
+            out IReadOnlyList<IndexRange>? deselected,
+            out IReadOnlyList<IndexRange>? selected)
+        {
+            var d = start.ToList();
+            var s = end.ToList();
+            
+            foreach (var r in end)
+            {
+                Remove(d, r);
+            }
+
+            foreach (var r in start)
+            {
+                Remove(s, r);
+            }
+
+            deselected = d;
+            selected = s;
         }
 
         public static IEnumerable<int> EnumerateIndices(IEnumerable<IndexRange> ranges)

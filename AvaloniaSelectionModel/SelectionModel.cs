@@ -187,11 +187,6 @@ namespace Avalonia.Controls.Selection
 
                     if (_startState.Ranges is null)
                     {
-                        if (_state.Ranges is object)
-                        {
-                            throw new AvaloniaInternalException("Ranges at start of batch update was null but now it is set.");
-                        }
-
                         if (_startState.SelectedIndex != _state.SelectedIndex)
                         {
                             if (_state.SelectedIndex != -1)
@@ -205,8 +200,12 @@ namespace Avalonia.Controls.Selection
                             }
                         }
                     }
+                    else 
+                    {
+                        IndexRange.Diff(_startState.Ranges, _state.Ranges!, out deselected, out selected);
+                    }
 
-                    if (selected is object || deselected is object)
+                    if (selected?.Count > 0 || deselected?.Count > 0)
                     {
                         var e = new SelectionModelSelectionChangedEventArgs<T>(
                             SelectedIndexes<T>.Create(deselected),
@@ -341,7 +340,6 @@ namespace Avalonia.Controls.Selection
                 if (SelectedIndex >= Items.Count)
                 {
                     _state.SelectedIndex = Ranges.Count > 0 ? Ranges[0].Begin : -1;
-                    RaisePropertyChanged(nameof(SelectedIndex));
                 }
             }
         }
