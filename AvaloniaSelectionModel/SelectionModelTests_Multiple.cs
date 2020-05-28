@@ -545,6 +545,149 @@ namespace Avalonia.Controls.UnitTests.Selection
         public class CollectionChanges
         {
             [Fact]
+            public void Adding_Item_Before_Selected_Item_Updates_Indexes()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var indexesChangedraised = 0;
+
+                target.SelectedIndex = 1;
+
+                target.SelectionChanged += (s, e) => ++selectionChangedRaised;
+
+                target.IndexesChanged += (s, e) =>
+                {
+                    Assert.Equal(0, e.StartIndex);
+                    Assert.Equal(1, e.Delta);
+                    ++indexesChangedraised;
+                };
+
+                data.Insert(0, "new");
+
+                Assert.Equal(2, target.SelectedIndex);
+                Assert.Equal(new[] { 2 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
+                Assert.Equal(2, target.AnchorIndex);
+                Assert.Equal(1, indexesChangedraised);
+                Assert.Equal(0, selectionChangedRaised);
+            }
+
+            [Fact]
+            public void Adding_Item_After_Selected_Doesnt_Raise_Events()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var raised = 0;
+
+                target.SelectedIndex = 1;
+
+                target.PropertyChanged += (s, e) => ++raised;
+                target.SelectionChanged += (s, e) => ++raised;
+                target.IndexesChanged += (s, e) => ++raised;
+
+                data.Insert(2, "new");
+
+                Assert.Equal(1, target.SelectedIndex);
+                Assert.Equal(new[] { 1 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new string[] { "bar" }, target.SelectedItems);
+                Assert.Equal(1, target.AnchorIndex);
+                Assert.Equal(0, raised);
+            }
+
+            [Fact]
+            public void Adding_Item_At_Beginning_Of_SelectedRange_Updates_Indexes()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var indexesChangedraised = 0;
+
+                target.SelectRange(4, 8);
+
+                target.SelectionChanged += (s, e) => ++selectionChangedRaised;
+
+                target.IndexesChanged += (s, e) =>
+                {
+                    Assert.Equal(4, e.StartIndex);
+                    Assert.Equal(2, e.Delta);
+                    ++indexesChangedraised;
+                };
+
+                data.InsertRange(4, new[] { "frank", "tank" });
+
+                Assert.Equal(6, target.SelectedIndex);
+                Assert.Equal(new[] { 6, 7, 8, 9, 10 }, target.SelectedIndexes);
+                Assert.Equal("quux", target.SelectedItem);
+                Assert.Equal(new[] { "quux", "corge", "grault", "garply", "waldo" }, target.SelectedItems);
+                Assert.Equal(6, target.AnchorIndex);
+                Assert.Equal(1, indexesChangedraised);
+                Assert.Equal(0, selectionChangedRaised);
+            }
+
+            [Fact]
+            public void Adding_Item_At_End_Of_SelectedRange_Updates_Indexes()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var indexesChangedraised = 0;
+
+                target.SelectRange(4, 8);
+
+                target.SelectionChanged += (s, e) => ++selectionChangedRaised;
+
+                target.IndexesChanged += (s, e) =>
+                {
+                    Assert.Equal(8, e.StartIndex);
+                    Assert.Equal(2, e.Delta);
+                    ++indexesChangedraised;
+                };
+
+                data.InsertRange(8, new[] { "frank", "tank" });
+
+                Assert.Equal(4, target.SelectedIndex);
+                Assert.Equal(new[] { 4, 5, 6, 7, 10 }, target.SelectedIndexes);
+                Assert.Equal("quux", target.SelectedItem);
+                Assert.Equal(new[] { "quux", "corge", "grault", "garply", "waldo" }, target.SelectedItems);
+                Assert.Equal(4, target.AnchorIndex);
+                Assert.Equal(1, indexesChangedraised);
+                Assert.Equal(0, selectionChangedRaised);
+            }
+
+            [Fact]
+            public void Adding_Item_In_Middle_Of_SelectedRange_Updates_Indexes()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var indexesChangedraised = 0;
+
+                target.SelectRange(4, 8);
+
+                target.SelectionChanged += (s, e) => ++selectionChangedRaised;
+
+                target.IndexesChanged += (s, e) =>
+                {
+                    Assert.Equal(6, e.StartIndex);
+                    Assert.Equal(2, e.Delta);
+                    ++indexesChangedraised;
+                };
+
+                data.InsertRange(6, new[] { "frank", "tank" });
+
+                Assert.Equal(4, target.SelectedIndex);
+                Assert.Equal(new[] { 4, 5, 8, 9, 10 }, target.SelectedIndexes);
+                Assert.Equal("quux", target.SelectedItem);
+                Assert.Equal(new[] { "quux", "corge", "grault", "garply", "waldo" }, target.SelectedItems);
+                Assert.Equal(4, target.AnchorIndex);
+                Assert.Equal(1, indexesChangedraised);
+                Assert.Equal(0, selectionChangedRaised);
+            }
+
+            [Fact]
             public void Removing_Selected_Item_Updates_State()
             {
                 var target = CreateTarget();
@@ -584,7 +727,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
 
             [Fact]
-            public void Removing_Unselected_Item_Before_Selected_Item_Updates_Indexes()
+            public void Removing_Item_Before_Selected_Item_Updates_Indexes()
             {
                 var target = CreateTarget();
                 var data = (AvaloniaList<string>)target.Source!;
@@ -614,7 +757,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
 
             [Fact]
-            public void Removing_Unselected_Item_After_Selected_Doesnt_Raise_Events()
+            public void Removing_Item_After_Selected_Doesnt_Raise_Events()
             {
                 var target = CreateTarget();
                 var data = (AvaloniaList<string>)target.Source!;

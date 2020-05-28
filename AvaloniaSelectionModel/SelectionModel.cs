@@ -370,25 +370,28 @@ namespace Avalonia.Controls.Selection
         private void OnSourceListChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             var startState = new State(_state);
-            SelectionModelSelectionChangedEventArgs<T>? selectionChanged = null;
+            int shiftDelta;
+            int shiftIndex;
             List<T>? removed = null;
+            SelectionModelSelectionChangedEventArgs<T>? selectionChanged = null;
 
             switch (e.Action)
             {
+                case NotifyCollectionChangedAction.Add:
+                    (shiftIndex, shiftDelta) = OnItemsAdded(e.NewStartingIndex, e.NewItems);
+                    break;
                 case NotifyCollectionChangedAction.Remove:
-                    bool shifted;
-                   
-                    (shifted, removed) = OnItemsRemoved(e.OldStartingIndex, e.OldItems);
-
-                    if (shifted && IndexesChanged is object)
-                    {
-                        IndexesChanged(
-                            this,
-                            new SelectionModelIndexesChangedEventArgs(e.OldStartingIndex, -e.OldItems.Count));
-                    }
+                    (shiftIndex, shiftDelta, removed) = OnItemsRemoved(e.OldStartingIndex, e.OldItems);
                     break;
                 default:
                     throw new NotImplementedException();
+            }
+
+            if (shiftDelta != 0 && IndexesChanged is object)
+            {
+                IndexesChanged(
+                    this,
+                    new SelectionModelIndexesChangedEventArgs(shiftIndex, shiftDelta));
             }
 
             if (removed?.Count > 0)
@@ -403,7 +406,62 @@ namespace Avalonia.Controls.Selection
             RaiseEvents(startState, _state, selectionChanged);
         }
 
-        private (bool shifted, List<T>? removed) OnItemsRemoved(int index, IList items)
+        private (int shiftIndex, int shiftDelta) OnItemsAdded(int index, IList items)
+        {
+            var count = items.Count;
+            var shifted = SelectedIndex >= index;
+
+            if (shifted)
+            {
+                _state.SelectedIndex += count;
+            }
+
+            if (AnchorIndex >= index)
+            {
+                _state.AnchorIndex += count;
+            }
+
+            if (Ranges is object)
+            {
+                List<IndexRange>? toAdd = null;
+
+                for (var i = 0; i < Ranges.Count; ++i)
+                {
+                    var range = Ranges[i];
+
+                    // The range is after the inserted items, need to shift the range right
+                    if (range.End >= index)
+                    {
+                        int begin = range.Begin;
+
+                        // If the index left of newIndex is inside the range,
+                        // Split the range and remember the left piece to add later
+                        if (range.Contains(index - 1))
+                        {
+                            range.Split(index - 1, out var before, out _);
+                            (toAdd ??= new List<IndexRange>()).Add(before);
+                            begin = index;
+                        }
+
+                        // Shift the range to the right
+                        Ranges[i] = new IndexRange(begin + count, range.End + count);
+                        shifted = true;
+                    }
+                }
+
+                if (toAdd is object)
+                {
+                    foreach (var range in toAdd)
+                    {
+                        IndexRange.Add(Ranges, range);
+                    }
+                }
+            }
+
+            return (index, shifted ? count : 0);
+        }
+
+        private (int shiftIndex, int shiftDelta, List<T>? removed) OnItemsRemoved(int index, IList items)
         {
             var count = items.Count;
             var removedRange = new IndexRange(index, index + count - 1);
@@ -466,7 +524,7 @@ namespace Avalonia.Controls.Selection
                 _state.AnchorIndex -= count;
             }
 
-            return (shifted, removed);
+            return (index, shifted ? -count : 0, removed);
         }
 
         private void RaiseEvents(in State before, in State after, bool indexesInvalidated = false)
