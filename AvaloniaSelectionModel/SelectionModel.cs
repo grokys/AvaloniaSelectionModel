@@ -383,6 +383,13 @@ namespace Avalonia.Controls.Selection
                 case NotifyCollectionChangedAction.Remove:
                     (shiftIndex, shiftDelta, removed) = OnItemsRemoved(e.OldStartingIndex, e.OldItems);
                     break;
+                case NotifyCollectionChangedAction.Replace:
+                    var (i, delta1, r) = OnItemsRemoved(e.OldStartingIndex, e.OldItems);
+                    var (_, delta2) = OnItemsAdded(e.NewStartingIndex, e.NewItems);
+                    shiftIndex = i;
+                    shiftDelta = delta1 + delta2;
+                    removed = r;
+                    break;
                 default:
                     throw new NotImplementedException();
             }
