@@ -637,6 +637,49 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, selectionChangedRaised);
                 Assert.Equal(1, selectedIndexRaised);
             }
+
+            [Fact]
+            public void Clearing_Source_Updates_State()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var selectedIndexRaised = 0;
+                var resetRaised = 0;
+
+                target.Source = data;
+                target.Select(1);
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndex))
+                    {
+                        ++selectedIndexRaised;
+                    }
+                };
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndices);
+                    Assert.Empty(e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndices);
+                    Assert.Empty(e.SelectedItems);
+                    ++selectionChangedRaised;
+                };
+
+                target.SelectionReset += (s, e) => ++resetRaised;
+
+                data.Clear();
+
+                Assert.Equal(-1, target.SelectedIndex);
+                Assert.Empty(target.SelectedIndexes);
+                Assert.Null(target.SelectedItem);
+                Assert.Empty(target.SelectedItems);
+                Assert.Equal(-1, target.AnchorIndex);
+                Assert.Equal(1, selectionChangedRaised);
+                Assert.Equal(1, resetRaised);
+                Assert.Equal(1, selectedIndexRaised);
+            }
         }
 
         private static SelectionModel<string> CreateTarget(bool createData = true)

@@ -161,6 +161,7 @@ namespace Avalonia.Controls.Selection
         public event EventHandler<SelectionModelIndexesChangedEventArgs>? IndexesChanged;
         public event PropertyChangedEventHandler? PropertyChanged;
         public event EventHandler<SelectionModelSelectionChangedEventArgs<T>>? SelectionChanged;
+        public event EventHandler<SelectionModelSelectionChangedEventArgs<T>>? SelectionReset;
 
         public void ClearSelection()
         {
@@ -370,8 +371,8 @@ namespace Avalonia.Controls.Selection
         private void OnSourceListChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             var startState = new State(_state);
-            int shiftDelta;
-            int shiftIndex;
+            int shiftDelta = 0;
+            int shiftIndex = -1;
             List<T>? removed = null;
             SelectionModelSelectionChangedEventArgs<T>? selectionChanged = null;
 
@@ -390,8 +391,28 @@ namespace Avalonia.Controls.Selection
                     shiftDelta = delta1 + delta2;
                     removed = r;
                     break;
-                default:
-                    throw new NotImplementedException();
+                case NotifyCollectionChangedAction.Reset:
+                    if (SelectedIndex >= 0)
+                    {
+                        var ranges = SelectionReset is object ?
+                            Ranges?.ToArray() ?? new IndexRange[] { new IndexRange(SelectedIndex) } :
+                            null;
+
+                        _state.SelectedIndex = _state.AnchorIndex = -1;
+                        Ranges?.Clear();
+
+                        if (ranges is object)
+                        {
+                            SelectionReset!(this, new SelectionModelSelectionChangedEventArgs<T>(
+                                new SelectedIndexes<T>(ranges),
+                                null,
+                                null,
+                                null));
+                        }
+
+                        removed = new List<T>();
+                    }
+                    break;
             }
 
             if (shiftDelta != 0 && IndexesChanged is object)
@@ -401,7 +422,7 @@ namespace Avalonia.Controls.Selection
                     new SelectionModelIndexesChangedEventArgs(shiftIndex, shiftDelta));
             }
 
-            if (removed?.Count > 0)
+            if (removed is object)
             {
                 selectionChanged = new SelectionModelSelectionChangedEventArgs<T>(
                     null,
