@@ -10,16 +10,16 @@ using System.Collections.Generic;
 
 namespace Avalonia.Controls
 {
-    public class SelectionModelSelectionChangedEventArgs<T> : EventArgs
+    public class TreeSelectionModelSelectionChangedEventArgs<T> : EventArgs
     {
-        public SelectionModelSelectionChangedEventArgs(
-            IReadOnlyList<int>? deselectedIndices,
-            IReadOnlyList<int>? selectedIndices,
+        public TreeSelectionModelSelectionChangedEventArgs(
+            IReadOnlyList<IndexPath>? deselectedIndices,
+            IReadOnlyList<IndexPath>? selectedIndices,
             IReadOnlyList<T>? deselectedItems,
             IReadOnlyList<T>? selectedItems)
         {
-            DeselectedIndexes = deselectedIndices ?? Array.Empty<int>();
-            SelectedIndexes = selectedIndices ?? Array.Empty<int>();
+            DeselectedIndices = deselectedIndices ?? Array.Empty<IndexPath>();
+            SelectedIndices = selectedIndices ?? Array.Empty<IndexPath>();
             DeselectedItems = deselectedItems ?? Array.Empty<T>();
             SelectedItems= selectedItems ?? Array.Empty<T>();
         }
@@ -27,12 +27,12 @@ namespace Avalonia.Controls
         /// <summary>
         /// Gets the indices of the items that were removed from the selection.
         /// </summary>
-        public IReadOnlyList<int> DeselectedIndexes { get; }
+        public IReadOnlyList<IndexPath> DeselectedIndices { get; }
 
         /// <summary>
         /// Gets the indices of the items that were added to the selection.
         /// </summary>
-        public IReadOnlyList<int> SelectedIndexes { get; }
+        public IReadOnlyList<IndexPath> SelectedIndices { get; }
 
         /// <summary>
         /// Gets the items that were removed from the selection.

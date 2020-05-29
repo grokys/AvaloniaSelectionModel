@@ -27,7 +27,7 @@ namespace Avalonia.Controls.Selection
             _state.SelectedIndex = _state.AnchorIndex = -1;
         }
 
-        public SelectionModel(IEnumerable<T> source)
+        public SelectionModel(IEnumerable<T>? source)
             : this()
         {
             Source = source;
@@ -155,7 +155,7 @@ namespace Avalonia.Controls.Selection
             }
         }
 
-        internal ItemsSourceView<T>? Items => _state.Items;
+        protected internal ItemsSourceView<T>? Items => _state.Items;
         internal List<IndexRange>? Ranges => _singleSelect ? null : _state.Ranges ??= new List<IndexRange>();
 
         public event EventHandler<SelectionModelIndexesChangedEventArgs>? IndexesChanged;
