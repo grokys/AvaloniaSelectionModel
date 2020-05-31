@@ -290,8 +290,8 @@ namespace Avalonia.Controls
         public static void Diff(
             IReadOnlyList<IndexRange> start,
             IReadOnlyList<IndexRange> end,
-            out IReadOnlyList<IndexRange>? deselected,
-            out IReadOnlyList<IndexRange>? selected)
+            out List<IndexRange>? deselected,
+            out List<IndexRange>? selected)
         {
             var d = start.ToList();
             var s = end.ToList();

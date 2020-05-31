@@ -156,6 +156,28 @@ namespace Avalonia.Controls.UnitTests.Selection
         public class Select
         {
             [Fact]
+            public void Select_Sets_SelectedIndex()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectedIndex = 0;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndex))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.Select(1);
+
+                Assert.Equal(1, target.SelectedIndex);
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
             public void Select_Clears_Old_Selection()
             {
                 var target = CreateTarget();
