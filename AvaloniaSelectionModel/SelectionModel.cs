@@ -32,11 +32,17 @@ namespace Avalonia.Controls.Selection
                         throw new InvalidOperationException("Cannot change source while update is in progress.");
                     }
 
+                    if (base.Source is object)
+                    {
+                        Clear();
+                    }
+
                     base.Source = value;
 
                     using var update = BatchUpdate();
                     update.Operation.IsSourceUpdate = true;
                     TrimInvalidSelections(update.Operation);
+                    RaisePropertyChanged(nameof(Source));
                 }
             }
         }
@@ -55,6 +61,8 @@ namespace Avalonia.Controls.Selection
                     {
                         CommitSelect(new IndexRange(_selectedIndex));
                     }
+
+                    RaisePropertyChanged(nameof(SingleSelect));
                }
             }
         }
@@ -550,23 +558,6 @@ namespace Avalonia.Controls.Selection
             }
 
             _operation = null;
-        }
-
-        private List<IndexRange> GetEffectiveSelection(Operation o)
-        {
-            if (SingleSelect)
-            {
-                throw new InvalidOperationException("Cannot call GetEffectiveSelection in SingleSelect mode.");
-            }
-
-            var result = Ranges.ToList();
-
-            if (o.SelectedRanges is object)
-            {
-                IndexRange.Add(result, o.SelectedRanges);
-            }
-
-            return result;
         }
 
         private void RaisePropertyChanged(string propertyName)

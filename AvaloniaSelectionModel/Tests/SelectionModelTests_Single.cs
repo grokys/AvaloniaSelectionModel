@@ -11,7 +11,7 @@ namespace Avalonia.Controls.UnitTests.Selection
 {
     public class SelectionModelTests_Single
     {
-        public class No_Source
+        public class Source
         {
             [Fact]
             public void Can_Select_Item_Before_Source_Assigned()
@@ -79,6 +79,51 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Empty(target.SelectedIndexes);
                 Assert.Null(target.SelectedItem);
                 Assert.Empty(target.SelectedItems);
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void Changing_Source_First_Clears_Old_Selection()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectedIndex = 2;
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Equal(new[] { 2 }, e.DeselectedIndexes);
+                    Assert.Equal(new string?[] { "baz" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndexes);
+                    Assert.Empty(e.SelectedItems);
+                    ++raised;
+                };
+
+                target.Source = new[] { "qux", "quux", "corge" };
+
+                Assert.Equal(-1, target.SelectedIndex);
+                Assert.Empty(target.SelectedIndexes);
+                Assert.Null(target.SelectedItem);
+                Assert.Empty(target.SelectedItems);
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void Raises_PropertyChanged()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.Source))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.Source = new[] { "qux", "quux", "corge" };
+
                 Assert.Equal(1, raised);
             }
         }
@@ -167,6 +212,26 @@ namespace Avalonia.Controls.UnitTests.Selection
                 data.Add("foo");
 
                 Assert.Equal(0, target.SelectedIndex);
+            }
+
+
+            [Fact]
+            public void Raises_PropertyChanged()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndex))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.SelectedIndex = 1;
+
+                Assert.Equal(1, raised);
             }
 
             private class MockBinding : ICollectionChangedListener
@@ -491,6 +556,26 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, target.AnchorIndex);
                 Assert.Equal(0, raised);
             }
+
+
+            [Fact]
+            public void Raises_PropertyChanged()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.AnchorIndex))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.SelectedIndex = 1;
+
+                Assert.Equal(1, raised);
+            }
         }
 
         public class SingleSelect
@@ -512,6 +597,25 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal("bar", target.SelectedItem);
                 Assert.Equal(new string[] { "bar" }, target.SelectedItems);
                 Assert.Equal(0, raised);
+            }
+
+            [Fact]
+            public void Raises_PropertyChanged()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SingleSelect))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.SingleSelect = false;
+
+                Assert.Equal(1, raised);
             }
         }
 
