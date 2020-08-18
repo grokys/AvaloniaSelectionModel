@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace AvaloniaSelectionModel
+namespace Avalonia.Controls.Selection
 {
     public class SelectionModelIndexesChangedEventArgs : EventArgs
     {

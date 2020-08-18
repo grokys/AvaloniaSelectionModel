@@ -95,5 +95,21 @@ namespace Avalonia.Controls.Selection
         {
             return ranges is object ? new SelectedItems<T>(ranges, items) : null;
         }
+
+        public class Untyped : IReadOnlyList<object?>
+        {
+            private readonly IReadOnlyList<T> _source;
+            public Untyped(IReadOnlyList<T> source) => _source = source;
+            public object? this[int index] => _source[index];
+            public int Count => _source.Count;
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+            public IEnumerator<object?> GetEnumerator()
+            {
+                foreach (var i in _source)
+                {
+                    yield return i;
+                }
+            }
+        }
     }
 }

@@ -5,13 +5,12 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using AvaloniaSelectionModel;
 
 #nullable enable
 
 namespace Avalonia.Controls.Selection
 {
-    public class SelectionModel<T> : SelectionNodeBase<T>, INotifyPropertyChanged
+    public class SelectionModel<T> : SelectionNodeBase<T>, ISelectionModel
     {
         private bool _singleSelect = true;
         private int _anchorIndex = -1;
@@ -19,6 +18,7 @@ namespace Avalonia.Controls.Selection
         private Operation? _operation;
         private SelectedIndexes<T>? _selectedIndexes;
         private SelectedItems<T>? _selectedItems;
+        private SelectedItems<T>.Untyped? _selectedItemsUntyped;
 
         public override IEnumerable<T>? Source
         {
@@ -73,12 +73,12 @@ namespace Avalonia.Controls.Selection
             set => SetSelectedIndex(value);
         }
 
-        public IEnumerable<int> SelectedIndexes => _selectedIndexes ??= new SelectedIndexes<T>(this);
+        public IReadOnlyList<int> SelectedIndexes => _selectedIndexes ??= new SelectedIndexes<T>(this);
 
         [MaybeNull]
         public T SelectedItem => GetItemAt(_selectedIndex);
 
-        public IEnumerable<T> SelectedItems => _selectedItems ??= new SelectedItems<T>(this);
+        public IReadOnlyList<T> SelectedItems => _selectedItems ??= new SelectedItems<T>(this);
 
         public int AnchorIndex 
         {
@@ -91,10 +91,36 @@ namespace Avalonia.Controls.Selection
             }
         }
 
+        IEnumerable? ISelectionModel.Source 
+        {
+            get => Source;
+            set => Source = (IEnumerable<T>?)value;
+        }
+
+        object? ISelectionModel.SelectedItem => SelectedItem;
+
+        IReadOnlyList<object?> ISelectionModel.SelectedItems 
+        {
+            get => _selectedItemsUntyped ??= new SelectedItems<T>.Untyped(SelectedItems);
+        }
+
         public event EventHandler<SelectionModelIndexesChangedEventArgs>? IndexesChanged;
         public event EventHandler<SelectionModelSelectionChangedEventArgs<T>>? SelectionChanged;
         public event EventHandler? SelectionReset;
         public event PropertyChangedEventHandler? PropertyChanged;
+
+        event EventHandler<SelectionModelSelectionChangedEventArgs>? ISelectionModel.SelectionChanged
+        {
+            add
+            {
+                throw new NotImplementedException();
+            }
+
+            remove
+            {
+                throw new NotImplementedException();
+            }
+        }
 
         public BatchUpdateOperation BatchUpdate() => new BatchUpdateOperation(this);
 
