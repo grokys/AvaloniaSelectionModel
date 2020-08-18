@@ -14,12 +14,12 @@ namespace Avalonia.Controls.Selection
         private bool _enableRanges;
         private int _updateCount;
 
-        private protected SelectionNodeBase(StateBase state)
+        private protected SelectionNodeBase(NodeState state)
         {
             State = state;
         }
 
-        public IEnumerable<T>? Source 
+        public virtual IEnumerable<T>? Source 
         {
             get => _source;
             set
@@ -82,9 +82,9 @@ namespace Avalonia.Controls.Selection
 
         internal List<IndexRange>? Ranges => _enableRanges ? State.Ranges ??= new List<IndexRange>() : null;
 
-        private protected StateBase State { get; }
+        private protected NodeState State { get; }
 
-        private protected StateBase? StartState { get; private set; }
+        private protected NodeState? StartState { get; private set; }
 
         public void BeginBatchUpdate()
         {
@@ -321,7 +321,7 @@ namespace Avalonia.Controls.Selection
             List<IndexRange>? deselectedIndexes,
             List<IndexRange>? selectedIndexes);
 
-        private protected virtual void RaiseEvents(StateBase before, StateBase after)
+        private protected virtual void RaiseEvents(NodeState before, NodeState after)
         {
             List<IndexRange>? selected = null;
             List<IndexRange>? deselected = null;
@@ -394,13 +394,13 @@ namespace Avalonia.Controls.Selection
             public List<T>? RemovedItems;
         }
 
-        private protected abstract class StateBase
+        private protected class NodeState
         {
-            public StateBase()
+            public NodeState()
             {
             }
 
-            public StateBase(StateBase s)
+            public NodeState(NodeState s)
             {
                 Items = s.Items;
                 Ranges = s.Ranges?.ToList();
@@ -409,7 +409,10 @@ namespace Avalonia.Controls.Selection
             public ItemsSourceView<T>? Items;
             public List<IndexRange>? Ranges;
 
-            public abstract StateBase Clone();
+            public virtual NodeState Clone()
+            {
+                return new NodeState(this);
+            }
         }
     }
 }

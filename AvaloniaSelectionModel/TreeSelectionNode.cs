@@ -1,92 +1,125 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 #nullable enable
 
 namespace Avalonia.Controls.Selection
 {
-    internal class TreeSelectionNode<T> : SelectionModel<T>
+    internal class TreeSelectionNode<T> : SelectionNodeBase<T>
     {
+        private readonly TreeSelectionModel<T> _owner;
         private List<TreeSelectionNode<T>?>? _children;
 
-        public TreeSelectionNode(IndexPath path)
+        public TreeSelectionNode(TreeSelectionModel<T> owner)
+            : base(new NodeState())
         {
-            IndexPath = path;
+            _owner = owner;
         }
 
-        public IndexPath IndexPath { get; }
-
-        public IReadOnlyList<TreeSelectionNode<T>> Children
+        public TreeSelectionNode(
+            TreeSelectionModel<T> owner,
+            TreeSelectionNode<T> parent,
+            [AllowNull] T item)
+            : this(owner)
         {
-            get
-            {
-                return (IReadOnlyList<TreeSelectionNode<T>>?)_children ??
-                    Array.Empty<TreeSelectionNode<T>>();
-            }
+            _owner = owner;
         }
 
-        public int GetSelectionCount()
-        {
-            var count = SelectedIndexes.Count;
-
-            if (_children is object)
+        public override IEnumerable<T>? Source 
+        { 
+            get => base.Source;
+            set
             {
+                base.Source = value;
+
+                if (_children is null)
+                {
+                    return;
+                }
+
                 foreach (var child in _children)
                 {
-                    if (child is object)
-                    {
-                        count += child.GetSelectionCount();
-                    }
+
                 }
             }
-
-            return count;
         }
 
-        public bool SetSelectedIndex(IndexPath path, int depth)
+        public bool TryGetNode(
+            IndexPath path,
+            int depth,
+            bool realize,
+            [NotNullWhen(true)] out TreeSelectionNode<T>? result)
         {
-            if (path.GetSize() == 0)
-            {
-                return false;
-            }
-
             if (depth == path.GetSize() - 1)
             {
-                var leaf = path.GetLeaf()!.Value;
-                SelectedIndex = leaf;
-                return SelectedIndex == leaf;
+                result = this;
+                return true;
             }
-            else
-            {
-                var child = GetChild(path.GetAt(depth), true);
-                return child?.SetSelectedIndex(path, depth + 1) ?? false;
-            }
-        }
 
-        private TreeSelectionNode<T>? GetChild(int index, bool realize)
-        {
+            var index = path.GetAt(depth);
+
             if (realize)
             {
                 _children ??= new List<TreeSelectionNode<T>?>();
+
+                if (Items is null)
+                {
+                    if (_children.Count < index + 1)
+                    {
+                        Resize(_children, index + 1);
+                    }
+
+                    result = _children[index] ??= new TreeSelectionNode<T>(
+                        _owner,
+                        this,
+                        default);
+                    return true;
+                }
+                else
+                {
+                    if (Items.Count > index)
+                    {
+                        if (_children[index] is TreeSelectionNode<T> n)
+                        {
+                            result = n;
+                            return true;
+                        }
+                    }
+                }
             }
             else
             {
-                return _children?[index];
-            }
-
-            if (Items is null)
-            {
-                if (_children.Count <= index + 1)
+                if (_children?.Count > index)
                 {
-                    Resize(_children, index + 1);
+                    result = _children[index];
+                    return result is object;
                 }
-
-                _children[index] ??= new TreeSelectionNode<T>(IndexPath.CloneWithChildIndex(index));
-                return _children[index];
             }
 
-            return null;
+            result = null;
+            return false;
+        }
+
+        protected override void OnIndexesChanged(int shiftIndex, int shiftDelta)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override void OnItemsReset()
+        {
+            throw new NotImplementedException();
+        }
+
+        private protected override void OnSelectionChanged(IReadOnlyList<T> deselectedItems)
+        {
+            throw new NotImplementedException();
+        }
+
+        private protected override void OnSelectionChanged(ItemsSourceView<T>? deselectedItems, ItemsSourceView<T>? selectedItems, List<IndexRange>? deselectedIndexes, List<IndexRange>? selectedIndexes)
+        {
+            throw new NotImplementedException();
         }
 
         private static void Resize(List<TreeSelectionNode<T>?> list, int count)

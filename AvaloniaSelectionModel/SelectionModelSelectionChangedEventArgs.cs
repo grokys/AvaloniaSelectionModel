@@ -13,10 +13,10 @@ namespace Avalonia.Controls
     public class SelectionModelSelectionChangedEventArgs<T> : EventArgs
     {
         public SelectionModelSelectionChangedEventArgs(
-            IReadOnlyList<int>? deselectedIndices,
-            IReadOnlyList<int>? selectedIndices,
-            IReadOnlyList<T>? deselectedItems,
-            IReadOnlyList<T>? selectedItems)
+            IReadOnlyList<int>? deselectedIndices = null,
+            IReadOnlyList<int>? selectedIndices = null,
+            IReadOnlyList<T>? deselectedItems = null,
+            IReadOnlyList<T>? selectedItems = null)
         {
             DeselectedIndexes = deselectedIndices ?? Array.Empty<int>();
             SelectedIndexes = selectedIndices ?? Array.Empty<int>();
@@ -25,12 +25,12 @@ namespace Avalonia.Controls
         }
 
         /// <summary>
-        /// Gets the indices of the items that were removed from the selection.
+        /// Gets the indexes of the items that were removed from the selection.
         /// </summary>
         public IReadOnlyList<int> DeselectedIndexes { get; }
 
         /// <summary>
-        /// Gets the indices of the items that were added to the selection.
+        /// Gets the indexes of the items that were added to the selection.
         /// </summary>
         public IReadOnlyList<int> SelectedIndexes { get; }
 

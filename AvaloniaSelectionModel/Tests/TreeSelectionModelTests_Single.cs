@@ -24,8 +24,8 @@ namespace Avalonia.Controls.UnitTests.Selection
                 {
                     Assert.Empty(e.DeselectedIndexes);
                     Assert.Empty(e.DeselectedItems);
-                    Assert.Equal(new[] { 5 }, e.SelectedIndexes);
-                    Assert.Equal(Nodes(null), e.SelectedItems);
+                    Assert.Equal(new[] { Path(5, 7) }, e.SelectedIndexes);
+                    //Assert.Equal(Nodes(null), e.SelectedItems);
                     ++raised;
                 };
 
@@ -38,24 +38,24 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, raised);
             }
 
-            //[Fact]
-            //public void Initializing_Source_Retains_Valid_Selection()
-            //{
-            //    var target = CreateTarget(false);
-            //    var raised = 0;
+            [Fact]
+            public void Initializing_Source_Retains_Valid_Selection()
+            {
+                var target = CreateTarget(false);
+                var raised = 0;
 
-            //    target.SelectedIndex = 1;
+                target.SelectedIndex = Path(0, 3, 4);
 
-            //    target.SelectionChanged += (s, e) => ++raised;
+                target.SelectionChanged += (s, e) => ++raised;
 
-            //    target.Source = new[] { "foo", "bar", "baz" };
+                target.Source = CreateSource();
 
-            //    Assert.Equal(1, target.SelectedIndex);
-            //    Assert.Equal(new[] { 1 }, target.SelectedIndexes);
-            //    Assert.Equal("bar", target.SelectedItem);
-            //    Assert.Equal(new string[] { "bar" }, target.SelectedItems);
-            //    Assert.Equal(0, raised);
-            //}
+                Assert.Equal(Path(0, 3, 4), target.SelectedIndex);
+                Assert.Equal(new[] { Path(0, 3, 4) }, target.SelectedIndexes);
+                Assert.Equal("qux quux", target.SelectedItem?.Name);
+                Assert.Equal(Nodes("qux quux"), target.SelectedItems);
+                Assert.Equal(0, raised);
+            }
 
             //[Fact]
             //public void Initializing_Source_Removes_Invalid_Selection()
@@ -687,7 +687,10 @@ namespace Avalonia.Controls.UnitTests.Selection
 
         private static TreeSelectionModel<Node> CreateTarget(bool createData = true)
         {
-            var result = new TreeSelectionModel<Node> { SingleSelect = true };
+            var result = new TreeSelectionModel<Node>(x => x.Children)
+            { 
+                SingleSelect = true,
+            };
 
             if (createData)
             {
@@ -707,14 +710,41 @@ namespace Avalonia.Controls.UnitTests.Selection
             return new IndexPath(indexes);
         }
 
+        private static AvaloniaList<Node> CreateSource()
+        {
+            return new AvaloniaList<Node> { new Node("Root") };
+        }
+
         private static List<Node?> Nodes(params string[] names)
         {
             names ??= new string[] { null };
             return names.Select(x => x is object ? new Node(x) : null).ToList();
         }
 
+        private static string[] GetNames()
+        {
+            return new[]
+            {
+                "foo",
+                "bar",
+                "baz",
+                "qux",
+                "quux",
+                "corge",
+                "grault",
+                "garply",
+                "waldo",
+                "fred",
+                "plugh",
+                "xyzzy",
+                "thud"
+            };
+        }
+
         private class Node
         {
+            private AvaloniaList<Node>? _children;
+
             public Node(string name)
             {
                 Name = name;
@@ -729,7 +759,19 @@ namespace Avalonia.Controls.UnitTests.Selection
             public int Level { get; }
             public string Name { get; }
 
-            public AvaloniaList<Node> Children { get; }
+            public AvaloniaList<Node>? Children 
+            { 
+                get
+                {
+                    if (_children is null && Level <= 3)
+                    {
+                        _children = new AvaloniaList<Node>(GetNames()
+                            .Select(x => new Node(Level + 1, $"{Name} {x}")));
+                    }
+
+                    return _children;
+                }
+            }
         }
     }
 }

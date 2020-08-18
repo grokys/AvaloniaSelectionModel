@@ -17,15 +17,10 @@ namespace Avalonia.Controls.Selection
         private SelectedItems<T>? _selectedItems;
         private int _updateCount;
 
-        public SelectionModel()
+        public SelectionModel(IEnumerable<T>? source = null)
             : base(new ModelState())
         {
             State = (ModelState)base.State;
-        }
-
-        public SelectionModel(IEnumerable<T>? source)
-            : this()
-        {
             Source = source;
         }
 
@@ -310,7 +305,7 @@ namespace Avalonia.Controls.Selection
         {
             ClearSelectionImpl();
             SelectionReset?.Invoke(this, EventArgs.Empty);
-            SelectionChanged?.Invoke(this, new SelectionModelSelectionChangedEventArgs<T>(null, null, null, null));
+            SelectionChanged?.Invoke(this, new SelectionModelSelectionChangedEventArgs<T>());
         }
 
         protected override void OnSourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -324,7 +319,7 @@ namespace Avalonia.Controls.Selection
         {
             SelectionChanged?.Invoke(
                 this,
-                new SelectionModelSelectionChangedEventArgs<T>(null, null, deselectedItems, null));
+                new SelectionModelSelectionChangedEventArgs<T>(deselectedItems: deselectedItems));
         }
 
         private protected override void OnSelectionChanged(
@@ -342,7 +337,7 @@ namespace Avalonia.Controls.Selection
                     SelectedItems<T>.Create(selectedIndexes, selectedItems)));
         }
 
-        private protected override void RaiseEvents(StateBase beforeBase, StateBase afterBase)
+        private protected override void RaiseEvents(NodeState beforeBase, NodeState afterBase)
         {
             var before = (ModelState)beforeBase;
             var after = (ModelState)afterBase;
@@ -408,7 +403,7 @@ namespace Avalonia.Controls.Selection
             }
         }
 
-        private protected class ModelState : StateBase
+        private protected class ModelState : NodeState
         {
             public ModelState()
             {
@@ -425,7 +420,7 @@ namespace Avalonia.Controls.Selection
             public int AnchorIndex;
             public int SelectedIndex;
 
-            public override StateBase Clone()
+            public override NodeState Clone()
             {
                 return new ModelState(this);
             }

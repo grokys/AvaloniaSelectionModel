@@ -8,12 +8,24 @@ namespace Avalonia.Controls.Selection
 {
     internal class TreeSelectedItems<T> : IReadOnlyList<T>
     {
-        private readonly TreeSelectionNode<T> _root;
-        private int? _count;
+        private readonly TreeSelectionModel<T> _model;
 
-        public TreeSelectedItems(TreeSelectionNode<T> root) => _root = root;
+        public TreeSelectedItems(TreeSelectionModel<T> root) => _model = root;
 
-        public int Count => _count ??= _root.GetSelectionCount();
+        public int Count
+        {
+            get
+            {
+                if (_model.SingleSelect)
+                {
+                    return _model.SelectedIndex.GetSize() > 0 ? 1 : 0;
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+            }
+        }
 
         public T this[int index]
         {
@@ -30,31 +42,19 @@ namespace Avalonia.Controls.Selection
 
         public IEnumerator<T> GetEnumerator()
         {
-            foreach (var i in GetEnumerator(_root))
+            if (_model.SingleSelect)
             {
-                yield return i;
+                if (_model.SelectedIndex.GetSize() > 0)
+                {
+                    yield return _model.SelectedItem;
+                }
+            }
+            else
+            {
+                throw new NotImplementedException();
             }
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        private IEnumerable<T> GetEnumerator(TreeSelectionNode<T> node)
-        {
-            foreach (var i in node.SelectedItems)
-            {
-                yield return i;
-            }
-
-            foreach (var child in node.Children)
-            {
-                if (child is object)
-                {
-                    foreach (var i in GetEnumerator(child))
-                    {
-                        yield return i;
-                    }
-                }
-            }
-        }
     }
 }
