@@ -151,6 +151,26 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(new string[] { "bar" }, target.SelectedItems);
                 Assert.Equal(1, raised);
             }
+
+
+            [Fact]
+            public void Setting_SelectedIndex_During_CollectionChanged_Results_In_Correct_Selection()
+            {
+                // Issue #4496
+                var data = new AvaloniaList<string>();
+                var target = CreateTarget();
+
+                data.CollectionChanged += (s, e) =>
+                {
+                    target.Select(0);
+                };
+
+                target.Source = data;
+
+                data.Add("foo");
+
+                Assert.Equal(0, target.SelectedIndex);
+            }
         }
 
         public class Select

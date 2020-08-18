@@ -25,7 +25,6 @@ namespace Avalonia.Controls
     {
         private readonly IList<T> _inner;
         private INotifyCollectionChanged _notifyCollectionChanged;
-        private int _cachedSize = -1;
 
         /// <summary>
         /// Initializes a new instance of the ItemsSourceView class for the specified data source.
@@ -63,18 +62,7 @@ namespace Avalonia.Controls
         /// <summary>
         /// Gets the number of items in the collection.
         /// </summary>
-        public int Count
-        {
-            get
-            {
-                if (_cachedSize == -1)
-                {
-                    _cachedSize = _inner.Count;
-                }
-
-                return _cachedSize;
-            }
-        }
+        public int Count => _inner.Count;
 
         /// <summary>
         /// Gets a value that indicates whether the items source can provide a unique key for each item.
