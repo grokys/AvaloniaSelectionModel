@@ -1157,7 +1157,33 @@ namespace Avalonia.Controls.UnitTests.Selection
                 using (target.BatchUpdate())
                 {
                     target.DeselectRange(2, 6);
-                    target.SelectRange(4, 3);
+                    target.SelectRange(4, 8);
+                }
+
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void Correctly_Batches_Clear_Select()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectRange(2, 3);
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Equal(new[] { 3 }, e.DeselectedIndexes);
+                    Assert.Equal(new[] { "qux" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndexes);
+                    Assert.Empty(e.SelectedItems);
+                    ++raised;
+                };
+
+                using (target.BatchUpdate())
+                {
+                    target.Clear();
+                    target.Select(2);
                 }
 
                 Assert.Equal(1, raised);

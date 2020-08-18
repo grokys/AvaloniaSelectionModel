@@ -5,8 +5,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
 
 #nullable enable
 
@@ -82,22 +80,15 @@ namespace Avalonia.Controls
             return Begin == other.Begin && End == other.End;
         }
 
-        public override int GetHashCode()
-        {
-            var hashCode = 1903003160;
-            hashCode = hashCode * -1521134295 + Begin.GetHashCode();
-            hashCode = hashCode * -1521134295 + End.GetHashCode();
-            return hashCode;
-        }
-
+        public override int GetHashCode() => HashCode.Combine(Begin, End);
         public override string ToString() => $"[{Begin}..{End}]";
 
         public static bool operator ==(IndexRange left, IndexRange right) => left.Equals(right);
         public static bool operator !=(IndexRange left, IndexRange right) => !(left == right);
 
-        public static bool Contains(IReadOnlyList<IndexRange> ranges, int index)
+        public static bool Contains(IReadOnlyList<IndexRange>? ranges, int index)
         {
-            if (index < 0)
+            if (ranges is null || index < 0)
             {
                 return false;
             }
@@ -240,10 +231,15 @@ namespace Avalonia.Controls
         }
 
         public static int Remove(
-            IList<IndexRange> ranges,
+            IList<IndexRange>? ranges,
             IndexRange range,
             IList<IndexRange>? removed = null)
         {
+            if (ranges is null)
+            {
+                return 0;
+            }
+
             var result = 0;
 
             for (var i = 0; i < ranges.Count; ++i)
@@ -297,65 +293,6 @@ namespace Avalonia.Controls
             }
 
             return result;
-        }
-
-        public static (int removedCount, bool shifted) RemoveAndAdjust(
-            IList<IndexRange> ranges,
-            IndexRange range)
-        {
-            var removed = Remove(ranges, range);
-            var shifted = false;
-
-            for (var i = 0; i < ranges.Count; ++i)
-            {
-                var existing = ranges[i];
-                var count = range.Count;
-
-                if (existing.End > range.Begin)
-                {
-                    ranges[i] = new IndexRange(existing.Begin - count, existing.End - count);
-                    shifted = true;
-                }
-            }
-
-            return (removed, shifted);
-        }
-
-        public static IEnumerable<IndexRange> Subtract(
-            IndexRange lhs,
-            IEnumerable<IndexRange> rhs)
-        {
-            var result = new List<IndexRange> { lhs };
-            
-            foreach (var range in rhs)
-            {
-                Remove(result, range);
-            }
-
-            return result;
-        }
-
-        public static void Diff(
-            IReadOnlyList<IndexRange> start,
-            IReadOnlyList<IndexRange> end,
-            out List<IndexRange>? deselected,
-            out List<IndexRange>? selected)
-        {
-            var d = start.ToList();
-            var s = end.ToList();
-            
-            foreach (var r in end)
-            {
-                Remove(d, r);
-            }
-
-            foreach (var r in start)
-            {
-                Remove(s, r);
-            }
-
-            deselected = d;
-            selected = s;
         }
 
         public static IEnumerable<int> EnumerateIndices(IEnumerable<IndexRange> ranges)

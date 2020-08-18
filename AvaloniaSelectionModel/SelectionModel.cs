@@ -143,44 +143,32 @@ namespace Avalonia.Controls.Selection
             {
                 SetSelectedIndex(index);
             }
-            else if (!IsSelected(index))
+            else
             {
                 using var update = BatchUpdate();
                 var o = update.Operation;
 
-                o.SelectedRanges ??= new List<IndexRange>();
-                IndexRange.Add(o.SelectedRanges, new IndexRange(index));
+                SelectRange(index, index);
 
-                if (o.SelectedIndex == -1)
+                if (IndexRange.Contains(o.SelectedRanges, index))
                 {
-                    o.SelectedIndex = index;
+                    o.AnchorIndex = index;
                 }
-
-                o.AnchorIndex = index;
             }
         }
 
         public void Deselect(int index)
         {
-            if (IsSelected(index))
+            if (SingleSelect)
             {
-                if (SingleSelect)
+                if (_selectedIndex == index)
                 {
                     SetSelectedIndex(-1, false);
                 }
-                else
-                {
-                    using var update = BatchUpdate();
-                    var o = update.Operation;
-
-                    o.DeselectedRanges ??= new List<IndexRange>();
-                    IndexRange.Add(o.DeselectedRanges, new IndexRange(index));
-
-                    if (o.SelectedIndex == index)
-                    {
-                        o.SelectedIndex = GetFirstSelectedIndexFromRanges(except: o.DeselectedRanges);
-                    }
-                }
+            }
+            else
+            {
+                DeselectRange(index, index);
             }
         }
 
@@ -200,24 +188,13 @@ namespace Avalonia.Controls.Selection
 
             using var update = BatchUpdate();
             var o = update.Operation;
+            var selected = new List<IndexRange>();
 
-            // Add the selected range to the operation.
             o.SelectedRanges ??= new List<IndexRange>();
+            IndexRange.Remove(o.DeselectedRanges, range);
             IndexRange.Add(o.SelectedRanges, range);
-            
-            // Remove any items that were already selected.
             IndexRange.Remove(o.SelectedRanges, Ranges);
 
-            // Remove the selected items from the deselected items in the operation.
-            if (o.DeselectedRanges is object)
-            {
-                foreach (var r in o.SelectedRanges)
-                {
-                    IndexRange.Remove(o.DeselectedRanges, r);
-                }
-            }
-
-            // Update the AnchorIndex and SelectedIndex if necessary.
             if (o.SelectedIndex == -1)
             {
                 o.SelectedIndex = range.Begin;
@@ -244,31 +221,19 @@ namespace Avalonia.Controls.Selection
             {
                 using var update = BatchUpdate();
                 var o = update.Operation;
+                var selected = Ranges.ToList();
+                var deselected = new List<IndexRange>();
+                var operationDeselected = new List<IndexRange>();
 
-                // The deselected items are the intersection of the currently selected items
-                // and the range to deselect.
-                var deselected = Ranges.ToList();
-                IndexRange.Intersect(deselected, range);
-
-                // Add the deselected items to the operation.
                 o.DeselectedRanges ??= new List<IndexRange>();
+                IndexRange.Remove(o.SelectedRanges, range, operationDeselected);
+                IndexRange.Remove(selected, range, deselected);
                 IndexRange.Add(o.DeselectedRanges, deselected);
 
-                // Remove the deselected items from the selected items in the operation.
-                if (o.SelectedRanges is object)
+                if (IndexRange.Contains(deselected, o.SelectedIndex) ||
+                    IndexRange.Contains(operationDeselected, o.SelectedIndex))
                 {
-                    IndexRange.Remove(o.SelectedRanges, deselected);
-                }
-
-                // Update the AnchorIndex and SelectedIndex if necessary.
-                var anchorIndexInvalidated = IndexRange.Contains(deselected, o.AnchorIndex);
-                var selectedIndexInvalidated = IndexRange.Contains(deselected, o.SelectedIndex);
-
-                if (anchorIndexInvalidated || selectedIndexInvalidated)
-                {
-                    var newValue = GetFirstSelectedIndexFromRanges(except: deselected);
-                    o.SelectedIndex = selectedIndexInvalidated ? newValue : o.SelectedIndex;
-                    o.AnchorIndex = anchorIndexInvalidated ? newValue : o.AnchorIndex;
+                    o.SelectedIndex = GetFirstSelectedIndexFromRanges(except: deselected);
                 }
             }
         }
@@ -415,7 +380,7 @@ namespace Avalonia.Controls.Selection
                 {
                     var result = IndexRange.GetAt(Ranges, index++);
 
-                    if (except is null || !IndexRange.Contains(except, result))
+                    if (!IndexRange.Contains(except, result))
                     {
                         return result;
                     }
@@ -585,6 +550,23 @@ namespace Avalonia.Controls.Selection
             }
 
             _operation = null;
+        }
+
+        private List<IndexRange> GetEffectiveSelection(Operation o)
+        {
+            if (SingleSelect)
+            {
+                throw new InvalidOperationException("Cannot call GetEffectiveSelection in SingleSelect mode.");
+            }
+
+            var result = Ranges.ToList();
+
+            if (o.SelectedRanges is object)
+            {
+                IndexRange.Add(result, o.SelectedRanges);
+            }
+
+            return result;
         }
 
         private void RaisePropertyChanged(string propertyName)
