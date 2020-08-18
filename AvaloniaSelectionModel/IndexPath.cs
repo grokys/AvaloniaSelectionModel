@@ -30,26 +30,24 @@ namespace Avalonia.Controls
             _path = new[] { groupIndex, itemIndex };
         }
 
-        public IndexPath(IEnumerable<int>? indices)
+        public IndexPath(params int[] indexes)
         {
-            if (indices != null)
+            _index = 0;
+            _path = indexes;
+        }
+
+        public IndexPath(IEnumerable<int>? indexes)
+        {
+            if (indexes != null)
             {
                 _index = 0;
-                _path = indices.ToArray();
+                _path = indexes.ToArray();
             }
             else
             {
                 _index = 0;
                 _path = null;
             }
-        }
-
-        private IndexPath(int[] path)
-        {
-            path = path ?? throw new ArgumentNullException(nameof(path));
-
-            _index = 0;
-            _path = path;
         }
 
         private IndexPath(int[] basePath, int index)
@@ -206,7 +204,7 @@ namespace Avalonia.Controls
 
         public static IndexPath CreateFromIndices(IList<int> indices) => new IndexPath(indices);
 
-        public override bool Equals(object obj) => obj is IndexPath other && Equals(other);
+        public override bool Equals(object? obj) => obj is IndexPath other && Equals(other);
 
         public bool Equals(IndexPath other) => CompareTo(other) == 0;
 
