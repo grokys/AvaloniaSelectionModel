@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Specialized;
 using Avalonia.Collections;
 using Avalonia.Controls.Selection;
+using Avalonia.Controls.Utils;
 using Xunit;
 
 #nullable enable
@@ -152,24 +154,43 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, raised);
             }
 
-
             [Fact]
             public void Setting_SelectedIndex_During_CollectionChanged_Results_In_Correct_Selection()
             {
                 // Issue #4496
                 var data = new AvaloniaList<string>();
                 var target = CreateTarget();
-
-                data.CollectionChanged += (s, e) =>
-                {
-                    target.Select(0);
-                };
+                var binding = new MockBinding(target, data);
 
                 target.Source = data;
 
                 data.Add("foo");
 
                 Assert.Equal(0, target.SelectedIndex);
+            }
+
+            private class MockBinding : ICollectionChangedListener
+            {
+                private readonly SelectionModel<string> _target;
+
+                public MockBinding(SelectionModel<string> target, AvaloniaList<string> data)
+                {
+                    _target = target;
+                    CollectionChangedEventManager.Instance.AddListener(data, this);
+                }
+
+                public void Changed(INotifyCollectionChanged sender, NotifyCollectionChangedEventArgs e)
+                {
+                    _target.Select(0);
+                }
+
+                public void PostChanged(INotifyCollectionChanged sender, NotifyCollectionChangedEventArgs e)
+                {
+                }
+
+                public void PreChanged(INotifyCollectionChanged sender, NotifyCollectionChangedEventArgs e)
+                {
+                }
             }
         }
 
@@ -360,10 +381,10 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
         }
 
-        public class ClearSelection
+        public class Clear
         {
             [Fact]
-            public void ClearSelection_Raises_SelectionChanged()
+            public void Clear_Raises_SelectionChanged()
             {
                 var target = CreateTarget();
                 var raised = 0;
@@ -379,7 +400,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                     ++raised;
                 };
 
-                target.ClearSelection();
+                target.Clear();
 
                 Assert.Equal(1, raised);
             }
@@ -502,7 +523,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 var target = CreateTarget();
                 var data = (AvaloniaList<string>)target.Source!;
                 var selectionChangedRaised = 0;
-                var indexesChangedraised = 0;
+                var indexesChangedRaised = 0;
 
                 target.SelectedIndex = 1;
 
@@ -512,7 +533,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 {
                     Assert.Equal(0, e.StartIndex);
                     Assert.Equal(1, e.Delta);
-                    ++indexesChangedraised;
+                    ++indexesChangedRaised;
                 };
 
                 data.Insert(0, "new");
@@ -522,7 +543,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal("bar", target.SelectedItem);
                 Assert.Equal(new[] { "bar" }, target.SelectedItems);
                 Assert.Equal(2, target.AnchorIndex);
-                Assert.Equal(1, indexesChangedraised);
+                Assert.Equal(1, indexesChangedRaised);
                 Assert.Equal(0, selectionChangedRaised);
             }
 
@@ -721,6 +742,24 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, selectionChangedRaised);
                 Assert.Equal(1, resetRaised);
                 Assert.Equal(1, selectedIndexRaised);
+            }
+        }
+
+        public class BatchUpdate
+        {
+            [Fact]
+            public void Changes_Do_Not_Take_Effect_Until_EndUpdate_Called()
+            {
+                var target = CreateTarget();
+
+                target.BeginBatchUpdate();
+                target.Select(0);
+
+                Assert.Equal(-1, target.SelectedIndex);
+
+                target.EndBatchUpdate();
+
+                Assert.Equal(0, target.SelectedIndex);
             }
         }
 

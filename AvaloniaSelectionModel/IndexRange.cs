@@ -95,6 +95,24 @@ namespace Avalonia.Controls
         public static bool operator ==(IndexRange left, IndexRange right) => left.Equals(right);
         public static bool operator !=(IndexRange left, IndexRange right) => !(left == right);
 
+        public static bool Contains(IReadOnlyList<IndexRange> ranges, int index)
+        {
+            if (index < 0)
+            {
+                return false;
+            }
+
+            foreach (var range in ranges)
+            {
+                if (range.Contains(index))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public static int GetAt(IReadOnlyList<IndexRange> ranges, int index)
         {
             var currentIndex = 0;
@@ -156,6 +174,21 @@ namespace Avalonia.Controls
             }
 
             MergeRanges(ranges);
+            return result;
+        }
+
+        public static int Add(
+            IList<IndexRange> destination,
+            IReadOnlyList<IndexRange> source,
+            IList<IndexRange>? added = null)
+        {
+            var result = 0;
+
+            foreach (var range in source)
+            {
+                result += Add(destination, range, added);
+            }
+
             return result;
         }
 
@@ -246,6 +279,21 @@ namespace Avalonia.Controls
                         result += remove.Count;
                     }
                 }
+            }
+
+            return result;
+        }
+
+        public static int Remove(
+            IList<IndexRange> destination,
+            IReadOnlyList<IndexRange> source,
+            IList<IndexRange>? added = null)
+        {
+            var result = 0;
+
+            foreach (var range in source)
+            {
+                result += Remove(destination, range, added);
             }
 
             return result;

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
+using System.Linq;
 using AvaloniaSelectionModel;
 
 #nullable enable
@@ -13,110 +13,175 @@ namespace Avalonia.Controls.Selection
 {
     public class SelectionModel<T> : SelectionNodeBase<T>, INotifyPropertyChanged
     {
+        private bool _singleSelect = true;
+        private int _anchorIndex = -1;
+        private int _selectedIndex = -1;
+        private Operation? _operation;
         private SelectedIndexes<T>? _selectedIndexes;
         private SelectedItems<T>? _selectedItems;
-        private int _updateCount;
 
-        public SelectionModel(IEnumerable<T>? source = null)
-            : base(new ModelState())
+        public override IEnumerable<T>? Source
         {
-            State = (ModelState)base.State;
-            Source = source;
-        }
-
-        public int AnchorIndex
-        {
-            get => State.AnchorIndex;
+            get => base.Source;
             set
             {
-                value = CoerceIndex(value);
-
-                if (State.AnchorIndex != value)
+                if (base.Source != value)
                 {
-                    State.AnchorIndex = value;
-
-                    if (_updateCount == 0)
+                    if (_operation is object)
                     {
-                        OnPropertyChanged();
+                        throw new InvalidOperationException("Cannot change source while update is in progress.");
                     }
+
+                    base.Source = value;
+
+                    using var update = BatchUpdate();
+                    update.Operation.IsSourceUpdate = true;
+                    TrimInvalidSelections(update.Operation);
                 }
             }
         }
-
-        public int SelectedIndex
-        {
-            get => State.SelectedIndex;
-            set
-            {
-                value = CoerceIndex(value);
-
-                if (SelectedIndex != value)
-                {
-                    using (new Operation(this))
-                    {
-                        if (value >= 0)
-                        {
-                            SelectImpl(value, true, true);
-                        }
-                        else
-                        {
-                            ClearSelection();
-                        }
-                    }
-                }
-            }
-        }
-
-        [MaybeNull]
-        public T SelectedItem
-        {
-            get => (State.SelectedIndex >= 0 && Items?.Count > State.SelectedIndex) ? Items[State.SelectedIndex] : default;
-        }
-
-        public IReadOnlyList<int> SelectedIndexes => _selectedIndexes ??= new SelectedIndexes<T>(this);
-        public IReadOnlyList<T> SelectedItems => _selectedItems ??= new SelectedItems<T>(this);
 
         public bool SingleSelect 
         {
-            get => !EnableRanges;
+            get => _singleSelect;
             set
             {
-                if (SingleSelect != value)
+                if (_singleSelect != value)
                 {
-                    if (_updateCount != 0)
+                    _singleSelect = value;
+                    RangesEnabled = !value;
+
+                    if (RangesEnabled && _selectedIndex >= 0)
                     {
-                        throw new InvalidOperationException("Cannot change selection mode while update is in progress.");
+                        CommitSelect(new IndexRange(_selectedIndex));
                     }
+               }
+            }
+        }
 
-                    EnableRanges = !value;
+        public int SelectedIndex 
+        {
+            get => _selectedIndex;
+            set => SetSelectedIndex(value);
+        }
 
-                    if (EnableRanges)
-                    {
-                        SelectImpl(SelectedIndex);
-                    }
+        public IEnumerable<int> SelectedIndexes => _selectedIndexes ??= new SelectedIndexes<T>(this);
 
-                    OnPropertyChanged();
+        [MaybeNull]
+        public T SelectedItem => GetItemAt(_selectedIndex);
+
+        public IEnumerable<T> SelectedItems => _selectedItems ??= new SelectedItems<T>(this);
+
+        public int AnchorIndex 
+        {
+            get => _anchorIndex;
+            set
+            {
+                using var update = BatchUpdate();
+                var index = CoerceIndex(value);
+                update.Operation.AnchorIndex = index;
+            }
+        }
+
+        public event EventHandler<SelectionModelIndexesChangedEventArgs>? IndexesChanged;
+        public event EventHandler<SelectionModelSelectionChangedEventArgs<T>>? SelectionChanged;
+        public event EventHandler? SelectionReset;
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        public BatchUpdateOperation BatchUpdate() => new BatchUpdateOperation(this);
+
+        public void BeginBatchUpdate()
+        {
+            _operation ??= new Operation(this);
+            ++_operation.UpdateCount;
+        }
+
+        public void EndBatchUpdate()
+        {
+            if (_operation is null || _operation.UpdateCount == 0)
+            {
+                throw new InvalidOperationException("No batch update in progress.");
+            }
+
+            if (--_operation.UpdateCount == 0)
+            {
+                // If the collection is currently changing, commit the update when the
+                // collection change finishes.
+                if (!IsSourceCollectionChanging)
+                {
+                    CommitOperation(_operation);
                 }
             }
         }
 
-        private protected new ModelState State { get; }
-
-        public event EventHandler<SelectionModelIndexesChangedEventArgs>? IndexesChanged;
-        public event PropertyChangedEventHandler? PropertyChanged;
-        public event EventHandler<SelectionModelSelectionChangedEventArgs<T>>? SelectionChanged;
-        public event EventHandler? SelectionReset;
-
-        public void ClearSelection()
+        public bool IsSelected(int index)
         {
-            using var o = new Operation(this);
-            ClearSelectionImpl();
+            if (index < 0)
+            {
+                return false;
+            }
+            else if (SingleSelect)
+            {
+                return _selectedIndex == index;
+            }
+            else
+            {
+                return IndexRange.Contains(Ranges, index);
+            }
         }
 
         public void Select(int index)
         {
-            using var o = new Operation(this);
-            SelectImpl(index, false, true);
+            index = CoerceIndex(index);
+
+            if (index < 0)
+            {
+                return;
+            }
+
+            if (SingleSelect)
+            {
+                SetSelectedIndex(index);
+            }
+            else if (!IsSelected(index))
+            {
+                using var update = BatchUpdate();
+                var o = update.Operation;
+
+                o.SelectedRanges ??= new List<IndexRange>();
+                IndexRange.Add(o.SelectedRanges, new IndexRange(index));
+
+                if (o.SelectedIndex == -1)
+                {
+                    o.SelectedIndex = index;
+                }
+
+                o.AnchorIndex = index;
+            }
+        }
+
+        public void Deselect(int index)
+        {
+            if (IsSelected(index))
+            {
+                if (SingleSelect)
+                {
+                    SetSelectedIndex(-1, false);
+                }
+                else
+                {
+                    using var update = BatchUpdate();
+                    var o = update.Operation;
+
+                    o.DeselectedRanges ??= new List<IndexRange>();
+                    IndexRange.Add(o.DeselectedRanges, new IndexRange(index));
+
+                    if (o.SelectedIndex == index)
+                    {
+                        o.SelectedIndex = GetFirstSelectedIndexFromRanges(except: o.DeselectedRanges);
+                    }
+                }
+            }
         }
 
         public void SelectRange(int start, int end)
@@ -126,128 +191,133 @@ namespace Avalonia.Controls.Selection
                 throw new InvalidOperationException("Cannot select range with single selection.");
             }
 
-            using var o = new Operation(this);
-            var max = Items is object ? Items.Count - 1 : int.MaxValue;
+            var range = CoerceRange(start, end);
 
-            if (start > max)
+            if (range.Begin == -1)
             {
                 return;
             }
 
-            start = Math.Max(start, 0);
-            end = Math.Min(end, max);
-            IndexRange.Add(Ranges!, new IndexRange(start, end));
+            using var update = BatchUpdate();
+            var o = update.Operation;
 
-            if (SelectedIndex == -1)
+            // Add the selected range to the operation.
+            o.SelectedRanges ??= new List<IndexRange>();
+            IndexRange.Add(o.SelectedRanges, range);
+            
+            // Remove any items that were already selected.
+            IndexRange.Remove(o.SelectedRanges, Ranges);
+
+            // Remove the selected items from the deselected items in the operation.
+            if (o.DeselectedRanges is object)
             {
-                State.SelectedIndex = start;
+                foreach (var r in o.SelectedRanges)
+                {
+                    IndexRange.Remove(o.DeselectedRanges, r);
+                }
             }
 
-            if (AnchorIndex == -1)
+            // Update the AnchorIndex and SelectedIndex if necessary.
+            if (o.SelectedIndex == -1)
             {
-                State.AnchorIndex = start;
+                o.SelectedIndex = range.Begin;
             }
-        }
 
-        public void Deselect(int index)
-        {
-            using var o = new Operation(this);
-            DeselectImpl(index);
+            if (o.AnchorIndex == -1)
+            {
+                o.AnchorIndex = range.Begin;
+            }
         }
 
         public void DeselectRange(int start, int end)
         {
-            using var o = new Operation(this);
-            DeselectRangeImpl(start, end);
+            var range = CoerceRange(start, end);
+
+            if (SingleSelect)
+            {
+                if (range.Contains(_selectedIndex))
+                {
+                    SelectedIndex = -1;
+                }
+            }
+            else if (range.Begin != -1)
+            {
+                using var update = BatchUpdate();
+                var o = update.Operation;
+
+                // The deselected items are the intersection of the currently selected items
+                // and the range to deselect.
+                var deselected = Ranges.ToList();
+                IndexRange.Intersect(deselected, range);
+
+                // Add the deselected items to the operation.
+                o.DeselectedRanges ??= new List<IndexRange>();
+                IndexRange.Add(o.DeselectedRanges, deselected);
+
+                // Remove the deselected items from the selected items in the operation.
+                if (o.SelectedRanges is object)
+                {
+                    IndexRange.Remove(o.SelectedRanges, deselected);
+                }
+
+                // Update the AnchorIndex and SelectedIndex if necessary.
+                var anchorIndexInvalidated = IndexRange.Contains(deselected, o.AnchorIndex);
+                var selectedIndexInvalidated = IndexRange.Contains(deselected, o.SelectedIndex);
+
+                if (anchorIndexInvalidated || selectedIndexInvalidated)
+                {
+                    var newValue = GetFirstSelectedIndexFromRanges(except: deselected);
+                    o.SelectedIndex = selectedIndexInvalidated ? newValue : o.SelectedIndex;
+                    o.AnchorIndex = anchorIndexInvalidated ? newValue : o.AnchorIndex;
+                }
+            }
         }
 
-        private void SelectImpl(int index, bool reset, bool setAnchor)
+        public void Clear()
         {
-            index = CoerceIndex(index);
-
-            if (index == -1)
+            if (SingleSelect)
             {
-                return;
-            }
-
-            if (SingleSelect || reset || SelectedIndex == -1)
-            {
-                if (SelectedIndex != index)
-                {
-                    State.SelectedIndex = index;
-
-                    if (reset)
-                    {
-                        base.ClearSelectionImpl();
-                    }
-
-                    base.SelectImpl(index);
-
-                    if (setAnchor)
-                    {
-                        State.AnchorIndex = index;
-                    }
-                }
+                SelectedIndex = -1;
             }
             else
             {
-                base.SelectImpl(index);
-
-                if (SelectedIndex == -1)
-                {
-                    State.SelectedIndex = index;
-                }
-
-                if (setAnchor)
-                {
-                    State.AnchorIndex = index;
-                }
+                using var update = BatchUpdate();
+                var o = update.Operation;
+                o.DeselectedRanges = Ranges.ToList();
+                o.SelectedRanges = null;
+                o.SelectedIndex = o.AnchorIndex = 0;
             }
         }
 
-        protected override void ClearSelectionImpl()
-        {
-            State.SelectedIndex = State.AnchorIndex = -1;
-            base.ClearSelectionImpl();
-        }
-
-        protected override void DeselectImpl(int index)
-        {
-            index = CoerceIndex(index);
-
-            if (SelectedIndex == index)
-            {
-                State.SelectedIndex = GetFirstSelectedIndex();
-            }
-
-            base.DeselectImpl(index);
-        }
-
-        protected override void DeselectRangeImpl(int start, int end)
-        {
-            base.DeselectRangeImpl(start, end);
-
-            if (SelectedIndex >= start && SelectedIndex <= end)
-            {
-                State.SelectedIndex = GetFirstSelectedIndex();
-            }
-        }
-
-        protected override void OnIndexesChanged(int shiftIndex, int shiftDelta)
+        private protected override void OnIndexesChanged(int shiftIndex, int shiftDelta)
         {
             IndexesChanged?.Invoke(this, new SelectionModelIndexesChangedEventArgs(shiftIndex, shiftDelta));
         }
 
-        protected override CollectionChangeState OnItemsAddedImpl(int index, IList items)
+        private protected override void OnItemsReset()
+        {
+            _selectedIndex = _anchorIndex = -1;
+            SelectionReset?.Invoke(this, EventArgs.Empty);
+            SelectionChanged?.Invoke(this, new SelectionModelSelectionChangedEventArgs<T>());
+        }
+
+        private protected override void OnSelectionChanged(IReadOnlyList<T> deselectedItems)
+        {
+            SelectionChanged?.Invoke(
+                this,
+                new SelectionModelSelectionChangedEventArgs<T>(deselectedItems: deselectedItems));
+        }
+
+        private protected override CollectionChangeState OnItemsAdded(int index, IList items)
         {
             var count = items.Count;
             var shifted = SelectedIndex >= index;
             var shiftCount = shifted ? count : 0;
 
-            State.SelectedIndex += shiftCount;
-            State.AnchorIndex += shiftCount;
+            _selectedIndex += shiftCount;
+            _anchorIndex += shiftCount;
 
-            var baseResult = base.OnItemsAddedImpl(index, items);
+            var baseResult = base.OnItemsAdded(index, items);
             shifted |= baseResult.ShiftDelta != 0;
 
             return new CollectionChangeState
@@ -257,14 +327,14 @@ namespace Avalonia.Controls.Selection
             };
         }
 
-        protected override CollectionChangeState OnItemsRemovedImpl(int index, IList items)
+        private protected override CollectionChangeState OnItemsRemoved(int index, IList items)
         {
             var count = items.Count;
             var removedRange = new IndexRange(index, index + count - 1);
             var shifted = false;
             List<T>? removed;
 
-            var baseResult = base.OnItemsRemovedImpl(index, items);
+            var baseResult = base.OnItemsRemoved(index, items);
             shifted |= baseResult.ShiftDelta != 0;
             removed = baseResult.RemovedItems;
 
@@ -272,24 +342,26 @@ namespace Avalonia.Controls.Selection
             {
                 if (SingleSelect)
                 {
+#pragma warning disable CS8604
                     removed = new List<T> { (T)items[SelectedIndex - index] };
+#pragma warning restore CS8604
                 }
 
-                State.SelectedIndex = GetFirstSelectedIndex();
+                _selectedIndex = GetFirstSelectedIndexFromRanges();
             }
             else if (SelectedIndex >= index)
             {
-                State.SelectedIndex -= count;
+                _selectedIndex -= count;
                 shifted = true;
             }
 
             if (removedRange.Contains(AnchorIndex))
             {
-                State.AnchorIndex = GetFirstSelectedIndex();
+                _anchorIndex = GetFirstSelectedIndexFromRanges();
             }
             else if (AnchorIndex >= index)
             {
-                State.AnchorIndex -= count;
+                _anchorIndex -= count;
                 shifted = true;
             }
 
@@ -301,129 +373,265 @@ namespace Avalonia.Controls.Selection
             };
         }
 
-        protected override void OnItemsReset()
+        private protected override void OnSourceCollectionChanged(NotifyCollectionChangedEventArgs e)
         {
-            ClearSelectionImpl();
-            SelectionReset?.Invoke(this, EventArgs.Empty);
-            SelectionChanged?.Invoke(this, new SelectionModelSelectionChangedEventArgs<T>());
-        }
-
-        protected override void OnSourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            var startState = (ModelState)State.Clone();
-            base.OnSourceCollectionChanged(sender, e);
-            RaisePropertyChangedEvents(startState, State);
-        }
-
-        private protected override void OnSelectionChanged(IReadOnlyList<T> deselectedItems)
-        {
-            SelectionChanged?.Invoke(
-                this,
-                new SelectionModelSelectionChangedEventArgs<T>(deselectedItems: deselectedItems));
-        }
-
-        private protected override void OnSelectionChanged(
-            ItemsSourceView<T>? deselectedItems = null,
-            ItemsSourceView<T>? selectedItems = null,
-            List<IndexRange>? deselectedIndexes = null,
-            List<IndexRange>? selectedIndexes= null)
-        {
-            SelectionChanged?.Invoke(
-                this,
-                new SelectionModelSelectionChangedEventArgs<T>(
-                    SelectedIndexes<T>.Create(deselectedIndexes),
-                    SelectedIndexes<T>.Create(selectedIndexes),
-                    SelectedItems<T>.Create(deselectedIndexes, deselectedItems),
-                    SelectedItems<T>.Create(selectedIndexes, selectedItems)));
-        }
-
-        private protected override void RaiseEvents(NodeState beforeBase, NodeState afterBase)
-        {
-            var before = (ModelState)beforeBase;
-            var after = (ModelState)afterBase;
-
-            if (SelectionChanged is object)
+            if (_operation?.UpdateCount > 0)
             {
-                if (SingleSelect)
+                throw new InvalidOperationException("Source collection was modified during selection update.");
+            }
+
+            var oldAnchorIndex = _anchorIndex;
+            var oldSelectedIndex = _selectedIndex;
+
+            base.OnSourceCollectionChanged(e);
+
+            if (oldSelectedIndex != _selectedIndex)
+            {
+                RaisePropertyChanged(nameof(SelectedIndex));
+            }
+
+            if (oldAnchorIndex != _anchorIndex)
+            {
+                RaisePropertyChanged(nameof(AnchorIndex));
+            }
+        }
+
+        protected override void OnSourceCollectionChangeFinished()
+        {
+            if (_operation is object)
+            {
+                CommitOperation(_operation);
+            }
+        }
+
+        private int GetFirstSelectedIndexFromRanges(List<IndexRange>? except = null)
+        {
+            if (RangesEnabled)
+            {
+                var count = IndexRange.GetCount(Ranges);
+                var index = 0;
+
+                while (index < count)
                 {
-                    if (before.SelectedIndex != after.SelectedIndex)
+                    var result = IndexRange.GetAt(Ranges, index++);
+
+                    if (except is null || !IndexRange.Contains(except, result))
                     {
-                        OnSelectionChanged(
-                            before.Items,
-                            after.Items,
-                            before.SelectedIndex >= 0 ?
-                                new List<IndexRange> { new IndexRange(before.SelectedIndex) } :
-                                null,
-                            after.SelectedIndex >= 0 ?
-                                new List<IndexRange> { new IndexRange(after.SelectedIndex) } :
-                                null);
+                        return result;
                     }
+                }
+            }
+
+            return -1;
+        }
+
+        private void SetSelectedIndex(int value, bool updateAnchor = true)
+        {
+            using var update = BatchUpdate();
+            var o = update.Operation;
+            var index = CoerceIndex(value);
+            
+            o.SelectedIndex = index;
+
+            if (RangesEnabled)
+            {
+                o.DeselectedRanges = Ranges.ToList();
+
+                if (index >= 0)
+                {
+                    var range = new IndexRange(index);
+                    o.SelectedRanges = new List<IndexRange> { range };
+                    IndexRange.Remove(o.DeselectedRanges, range);
+                }
+            }
+
+            if (updateAnchor)
+            {
+                update.Operation.AnchorIndex = index;
+            }
+        }
+
+        [return: MaybeNull]
+        private T GetItemAt(int index)
+        {
+            if (ItemsView is null || index < 0 || index >= ItemsView.Count)
+            {
+                return default;
+            }
+
+            return ItemsView.GetAt(index);
+        }
+
+        private int CoerceIndex(int index)
+        {
+            index = Math.Max(index, -1);
+
+            if (ItemsView is object && index >= ItemsView.Count)
+            {
+                index = -1;
+            }
+
+            return index;
+        }
+
+        private IndexRange CoerceRange(int start, int end)
+        {
+            var max = ItemsView is object ? ItemsView.Count - 1 : int.MaxValue;
+
+            if (start > max)
+            {
+                return new IndexRange(-1);
+            }
+
+            start = Math.Max(start, 0);
+            end = Math.Min(end, max);
+
+            return new IndexRange(start, end);
+        }
+
+        private void TrimInvalidSelections(Operation operation)
+        {
+            if (ItemsView is null)
+            {
+                return;
+            }
+
+            var max = ItemsView.Count - 1;
+
+            if (operation.SelectedIndex > max)
+            {
+                operation.SelectedIndex = GetFirstSelectedIndexFromRanges();
+            }
+
+            if (operation.AnchorIndex > max)
+            {
+                operation.AnchorIndex = GetFirstSelectedIndexFromRanges();
+            }
+
+            if (RangesEnabled && Ranges.Count > 0)
+            {
+                var selected = Ranges.ToList();
+                
+                if (max < 0)
+                {
+                    operation.DeselectedRanges = selected;
                 }
                 else
                 {
-                    base.RaiseEvents(beforeBase, afterBase);
+                    var valid = new IndexRange(0, max);
+                    var removed = new List<IndexRange>();
+                    IndexRange.Intersect(selected, valid, removed);
+                    operation.DeselectedRanges = removed;
+                }
+            }
+        }
+
+        private void CommitOperation(Operation operation)
+        {
+            var oldAnchorIndex = _anchorIndex;
+            var oldSelectedIndex = _selectedIndex;
+
+            _selectedIndex = operation.SelectedIndex;
+            _anchorIndex = operation.AnchorIndex;
+
+            if (operation.SelectedRanges is object)
+            {
+                CommitSelect(operation.SelectedRanges);
+            }
+
+            if (operation.DeselectedRanges is object)
+            {
+                CommitDeselect(operation.DeselectedRanges);
+            }
+
+            if (SelectionChanged is object)
+            {
+                IReadOnlyList<IndexRange>? deselected = operation.DeselectedRanges;
+                IReadOnlyList<IndexRange>? selected = operation.SelectedRanges;
+
+                if (SingleSelect && oldSelectedIndex != _selectedIndex)
+                {
+                    if (oldSelectedIndex != -1)
+                    {
+                        deselected = new[] { new IndexRange(oldSelectedIndex) };
+                    }
+
+                    if (_selectedIndex != -1)
+                    {
+                        selected = new[] { new IndexRange(_selectedIndex) };
+                    }
+                }
+
+                if (deselected?.Count > 0 || selected?.Count > 0)
+                {
+                    var deselectedSource = operation.IsSourceUpdate ? null : ItemsView;
+                    var e = new SelectionModelSelectionChangedEventArgs<T>(
+                        SelectedIndexes<T>.Create(deselected),
+                        SelectedIndexes<T>.Create(selected),
+                        SelectedItems<T>.Create(deselected, deselectedSource),
+                        SelectedItems<T>.Create(selected, ItemsView));
+                    SelectionChanged?.Invoke(this, e);
                 }
             }
 
-            RaisePropertyChangedEvents(before, after);
-        }
-
-        protected override void TrimInvalidSelectionsImpl()
-        {
-            if (SelectedIndex >= Items!.Count)
+            if (oldSelectedIndex != _selectedIndex)
             {
-                State.SelectedIndex = GetFirstSelectedIndex();
+                RaisePropertyChanged(nameof(SelectedIndex));
             }
 
-            if (AnchorIndex >= Items!.Count)
+            if (oldAnchorIndex != _anchorIndex)
             {
-                State.AnchorIndex = GetFirstSelectedIndex();
+                RaisePropertyChanged(nameof(AnchorIndex));
             }
 
-            base.TrimInvalidSelectionsImpl();
+            _operation = null;
         }
 
-        private int GetFirstSelectedIndex() => State.Ranges?.Count > 0 ? State.Ranges[0].Begin : -1;
-
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        private void RaisePropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        private void RaisePropertyChangedEvents(ModelState before, ModelState after)
+        public struct BatchUpdateOperation : IDisposable
         {
-            if (before.SelectedIndex != after.SelectedIndex)
+            private readonly SelectionModel<T> _owner;
+            private bool _isDisposed;
+
+            public BatchUpdateOperation(SelectionModel<T> owner)
             {
-                OnPropertyChanged(nameof(SelectedIndex));
+                _owner = owner;
+                _isDisposed = false;
+                owner.BeginBatchUpdate();
             }
 
-            if (before.AnchorIndex != after.AnchorIndex)
+            internal Operation Operation => _owner._operation!;
+
+            public void Dispose()
             {
-                OnPropertyChanged(nameof(AnchorIndex));
+                if (!_isDisposed)
+                {
+                    _owner?.EndBatchUpdate();
+                    _isDisposed = true;
+                }
             }
         }
 
-        private protected class ModelState : NodeState
+        internal class Operation
         {
-            public ModelState()
+            public Operation(SelectionModel<T> owner)
             {
-                AnchorIndex = SelectedIndex = -1; ;
+                SingleSelect = owner.SingleSelect;
+                AnchorIndex = owner.AnchorIndex;
+                SelectedIndex = owner.SelectedIndex;
             }
 
-            public ModelState(ModelState source)
-                : base(source)
-            {
-                AnchorIndex = source.AnchorIndex;
-                SelectedIndex = source.SelectedIndex;
-            }
-
-            public int AnchorIndex;
-            public int SelectedIndex;
-
-            public override NodeState Clone()
-            {
-                return new ModelState(this);
-            }
+            public int UpdateCount { get; set; }
+            public bool IsSourceUpdate { get; set; }
+            public bool SingleSelect { get; }
+            public int AnchorIndex { get; set; }
+            public int SelectedIndex { get; set; }
+            public List<IndexRange>? SelectedRanges { get; set; }
+            public List<IndexRange>? DeselectedRanges { get; set; }
         }
     }
 }

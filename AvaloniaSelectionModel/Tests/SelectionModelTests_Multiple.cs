@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using Avalonia.Collections;
+﻿using Avalonia.Collections;
 using Avalonia.Controls.Selection;
 using Xunit;
 
@@ -424,10 +423,10 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
         }
 
-        public class ClearSelection
+        public class Clear
         {
             [Fact]
-            public void ClearSelection_Raises_SelectionChanged()
+            public void Clear_Raises_SelectionChanged()
             {
                 var target = CreateTarget();
                 var raised = 0;
@@ -444,7 +443,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                     ++raised;
                 };
 
-                target.ClearSelection();
+                target.Clear();
 
                 Assert.Equal(1, raised);
             }

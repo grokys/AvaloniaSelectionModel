@@ -2,174 +2,133 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Linq;
+using Avalonia.Controls.Utils;
 
 #nullable enable
 
 namespace Avalonia.Controls.Selection
 {
-    public abstract class SelectionNodeBase<T>
+    public abstract class SelectionNodeBase<T> : ICollectionChangedListener
     {
         private IEnumerable<T>? _source;
-        private bool _enableRanges;
-        private int _updateCount;
+        private bool _rangesEnabled;
+        private List<IndexRange>? _ranges;
+        private int _collectionChanging;
 
-        private protected SelectionNodeBase(NodeState state)
-        {
-            State = state;
-        }
-
-        public virtual IEnumerable<T>? Source 
+        public virtual IEnumerable<T>? Source
         {
             get => _source;
             set
             {
                 if (_source != value)
                 {
-                    if (_updateCount != 0)
-                    {
-                        throw new InvalidOperationException("Cannot change source while update is in progress.");
-                    }
-
-                    if (State.Items is object)
-                    {
-                        State.Items.CollectionChanged -= OnSourceCollectionChanged;
-                    }
-
-                    using (new Operation(this))
-                    {
-                        _source = value;
-                        State.Items?.Dispose();
-                        State.Items = ItemsSourceView<T>.Create(value);
-
-                        if (State.Items is object)
-                        {
-                            State.Items.CollectionChanged += OnSourceCollectionChanged;
-                        }
-
-                        if (Items != null)
-                        {
-                            TrimInvalidSelectionsImpl();
-                        }
-                    }
+                    ItemsView?.RemoveListener(this);
+                    _source = value;
+                    ItemsView = value is object ? ItemsSourceView<T>.GetOrCreate(value) : null;
+                    ItemsView?.AddListener(this);
                 }
             }
         }
 
-        protected bool EnableRanges
+        protected bool IsSourceCollectionChanging => _collectionChanging > 0;
+
+        protected bool RangesEnabled
         {
-            get => _enableRanges;
+            get => _rangesEnabled;
             set
             {
-                if (_updateCount != 0)
+                if (_rangesEnabled != value)
                 {
-                    throw new InvalidOperationException("Cannot change EnableRanges while update is in progress.");
-                }
+                    _rangesEnabled = value;
 
-                if (_enableRanges != value)
-                {
-                    _enableRanges = value;
-
-                    if (!value)
+                    if (!_rangesEnabled)
                     {
-                        State.Ranges = null;
+                        _ranges = null;
                     }
                 }
             }
         }
 
-        internal ItemsSourceView<T>? Items => State.Items;
+        internal ItemsSourceView<T>? ItemsView { get; set; }
 
-        internal List<IndexRange>? Ranges => _enableRanges ? State.Ranges ??= new List<IndexRange>() : null;
-
-        private protected NodeState State { get; }
-
-        private protected NodeState? StartState { get; private set; }
-
-        public void BeginBatchUpdate()
+        internal IReadOnlyList<IndexRange> Ranges
         {
-            if (_updateCount++ == 0)
+            get
             {
-                StartState = State.Clone();
+                if (!RangesEnabled)
+                {
+                    throw new InvalidOperationException("Ranges not enabled.");
+                }
+
+                return _ranges ??= new List<IndexRange>();
             }
         }
 
-        public void EndBatchUpdate()
+        void ICollectionChangedListener.PreChanged(INotifyCollectionChanged sender, NotifyCollectionChangedEventArgs e)
         {
-            if (--_updateCount == 0)
+            ++_collectionChanging;
+        }
+
+        void ICollectionChangedListener.Changed(INotifyCollectionChanged sender, NotifyCollectionChangedEventArgs e)
+        {
+            OnSourceCollectionChanged(e);
+        }
+
+        void ICollectionChangedListener.PostChanged(INotifyCollectionChanged sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (--_collectionChanging == 0)
             {
-                var startState = StartState!;
-                StartState = null;
-                RaiseEvents(startState, State);
+                OnSourceCollectionChangeFinished();
             }
         }
 
-        protected virtual void ClearSelectionImpl()
+        protected abstract void OnSourceCollectionChangeFinished();
+
+        private protected abstract void OnIndexesChanged(int shiftIndex, int shiftDelta);
+
+        private protected abstract void OnItemsReset();
+
+        private protected abstract void OnSelectionChanged(IReadOnlyList<T> deselectedItems);
+
+        private protected void CommitSelect(IndexRange range)
         {
-            Ranges?.Clear();
-        }
-
-        protected virtual void SelectImpl(int index)
-        {
-            index = CoerceIndex(index);
-
-            if (index == -1)
+            if (RangesEnabled)
             {
-                return;
-            }
-
-            if (index >= 0 && Ranges is object)
-            {
-                IndexRange.Add(Ranges, new IndexRange(index));
+                _ranges ??= new List<IndexRange>();
+                IndexRange.Add(_ranges, range);
             }
         }
 
-        protected virtual void SelectRangeImpl(int start, int end)
+        private protected void CommitSelect(IReadOnlyList<IndexRange> ranges)
         {
-            if (Ranges is null)
+            if (RangesEnabled)
             {
-                throw new InvalidOperationException("Cannot select range with single selection.");
-            }
+                _ranges ??= new List<IndexRange>();
 
-            var max = Items is object ? Items.Count - 1 : int.MaxValue;
-
-            if (start > max)
-            {
-                return;
-            }
-
-            start = Math.Max(start, 0);
-            end = Math.Min(end, max);
-            IndexRange.Add(Ranges, new IndexRange(start, end));
-        }
-
-        protected virtual void DeselectImpl(int index)
-        {
-            index = CoerceIndex(index);
-
-            if (index > 0 && Ranges is object)
-            {
-                IndexRange.Remove(Ranges, new IndexRange(index));
+                foreach (var range in ranges)
+                {
+                    IndexRange.Add(_ranges, range);
+                }
             }
         }
 
-        protected virtual void DeselectRangeImpl(int start, int end)
+        private protected void CommitDeselect(IReadOnlyList<IndexRange> ranges)
         {
-            if (Ranges is object)
+            if (RangesEnabled && _ranges is object)
             {
-                start = Math.Max(start, 0);
-                IndexRange.Remove(Ranges, new IndexRange(start, end));
+                foreach (var range in ranges)
+                {
+                    IndexRange.Remove(_ranges, range);
+                }
             }
         }
 
-        protected abstract void OnIndexesChanged(int shiftIndex, int shiftDelta);
-
-        protected virtual CollectionChangeState OnItemsAddedImpl(int index, IList items)
+        private protected virtual CollectionChangeState OnItemsAdded(int index, IList items)
         {
             var count = items.Count;
             var shifted = false;
 
-            if (Ranges is object)
+            if (_ranges is object)
             {
                 List<IndexRange>? toAdd = null;
 
@@ -192,7 +151,7 @@ namespace Avalonia.Controls.Selection
                         }
 
                         // Shift the range to the right
-                        Ranges[i] = new IndexRange(begin + count, range.End + count);
+                        _ranges[i] = new IndexRange(begin + count, range.End + count);
                         shifted = true;
                     }
                 }
@@ -201,7 +160,7 @@ namespace Avalonia.Controls.Selection
                 {
                     foreach (var range in toAdd)
                     {
-                        IndexRange.Add(Ranges, range);
+                        IndexRange.Add(_ranges, range);
                     }
                 }
             }
@@ -213,18 +172,18 @@ namespace Avalonia.Controls.Selection
             };
         }
 
-        protected virtual CollectionChangeState OnItemsRemovedImpl(int index, IList items)
+        private protected virtual CollectionChangeState OnItemsRemoved(int index, IList items)
         {
             var count = items.Count;
             var removedRange = new IndexRange(index, index + count - 1);
             bool shifted = false;
             List<T>? removed = null;
 
-            if (Ranges is object)
+            if (_ranges is object)
             {
                 var deselected = new List<IndexRange>();
 
-                if (IndexRange.Remove(Ranges!, removedRange, deselected) > 0)
+                if (IndexRange.Remove(_ranges, removedRange, deselected) > 0)
                 {
                     removed = new List<T>();
 
@@ -232,7 +191,9 @@ namespace Avalonia.Controls.Selection
                     {
                         for (var i = range.Begin; i <= range.End; ++i)
                         {
+#pragma warning disable CS8604
                             removed.Add((T)items[i - index]);
+#pragma warning restore CS8604
                         }
                     }
                 }
@@ -243,7 +204,7 @@ namespace Avalonia.Controls.Selection
 
                     if (existing.End > removedRange.Begin)
                     {
-                        Ranges[i] = new IndexRange(existing.Begin - count, existing.End - count);
+                        _ranges[i] = new IndexRange(existing.Begin - count, existing.End - count);
                         shifted = true;
                     }
                 }
@@ -257,32 +218,24 @@ namespace Avalonia.Controls.Selection
             };
         }
 
-        protected abstract void OnItemsReset();
-
-        protected virtual void OnSourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private protected virtual void OnSourceCollectionChanged(NotifyCollectionChangedEventArgs e)
         {
             var shiftDelta = 0;
             var shiftIndex = -1;
-            var startState = State.Clone();
             List<T>? removed = null;
-
-            if (_updateCount != 0)
-            {
-                throw new InvalidOperationException("Source collection was modified during selection update.");
-            }
 
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
                     {
-                        var change = OnItemsAddedImpl(e.NewStartingIndex, e.NewItems);
+                        var change = OnItemsAdded(e.NewStartingIndex, e.NewItems);
                         shiftIndex = change.ShiftIndex;
                         shiftDelta = change.ShiftDelta;
                         break;
                     }
                 case NotifyCollectionChangedAction.Remove:
                     {
-                        var change = OnItemsRemovedImpl(e.OldStartingIndex, e.OldItems);
+                        var change = OnItemsRemoved(e.OldStartingIndex, e.OldItems);
                         shiftIndex = change.ShiftIndex;
                         shiftDelta = change.ShiftDelta;
                         removed = change.RemovedItems;
@@ -290,8 +243,8 @@ namespace Avalonia.Controls.Selection
                     }
                 case NotifyCollectionChangedAction.Replace:
                     {
-                        var removeChange = OnItemsRemovedImpl(e.OldStartingIndex, e.OldItems);
-                        var addChange = OnItemsAddedImpl(e.NewStartingIndex, e.NewItems);
+                        var removeChange = OnItemsRemoved(e.OldStartingIndex, e.OldItems);
+                        var addChange = OnItemsAdded(e.NewStartingIndex, e.NewItems);
                         shiftIndex = removeChange.ShiftIndex;
                         shiftDelta = removeChange.ShiftDelta + addChange.ShiftDelta;
                         removed = removeChange.RemovedItems;
@@ -313,106 +266,11 @@ namespace Avalonia.Controls.Selection
             }
         }
 
-        private protected abstract void OnSelectionChanged(IReadOnlyList<T> deselectedItems);
-
-        private protected abstract void OnSelectionChanged(
-            ItemsSourceView<T>? deselectedItems,
-            ItemsSourceView<T>? selectedItems,
-            List<IndexRange>? deselectedIndexes,
-            List<IndexRange>? selectedIndexes);
-
-        private protected virtual void RaiseEvents(NodeState before, NodeState after)
-        {
-            List<IndexRange>? selected = null;
-            List<IndexRange>? deselected = null;
-
-            if (before.Ranges is object && after.Ranges is object)
-            {
-                IndexRange.Diff(before.Ranges, after.Ranges, out deselected, out selected);
-            }
-            else if (after.Ranges is object)
-            {
-                selected = after.Ranges;
-            }
-            else if (before.Ranges is object)
-            {
-                deselected = before.Ranges;
-            }
-
-            if (selected?.Count > 0 || deselected?.Count > 0)
-            {
-                OnSelectionChanged(before.Items, after.Items, deselected, selected);
-            }
-        }
-
-        protected virtual void TrimInvalidSelectionsImpl()
-        {
-            if (Items is null)
-            {
-                throw new AvaloniaInternalException("Cannot trim invalid selections on null source.");
-            }
-
-            if (Ranges is object)
-            {
-                var validRange = new IndexRange(0, Items.Count - 1);
-                IndexRange.Intersect(Ranges, validRange);
-            }
-        }
-
-        protected int CoerceIndex(int index)
-        {
-            index = Math.Max(index, -1);
-
-            if (Items is object && index >= Items.Count)
-            {
-                index = -1;
-            }
-
-            return index;
-        }
-
-        protected struct Operation : IDisposable
-        {
-            private readonly SelectionNodeBase<T> _owner;
-
-            public Operation(SelectionNodeBase<T> owner)
-            {
-                _owner = owner;
-                _owner.BeginBatchUpdate();
-            }
-
-            public void Dispose()
-            {
-                _owner.EndBatchUpdate();
-            }
-        }
-
-        protected struct CollectionChangeState
+        private protected struct CollectionChangeState
         {
             public int ShiftIndex;
             public int ShiftDelta;
             public List<T>? RemovedItems;
-        }
-
-        private protected class NodeState
-        {
-            public NodeState()
-            {
-            }
-
-            public NodeState(NodeState s)
-            {
-                Items = s.Items;
-                Ranges = s.Ranges?.ToList();
-            }
-
-            public ItemsSourceView<T>? Items;
-            public List<IndexRange>? Ranges;
-
-            public virtual NodeState Clone()
-            {
-                return new NodeState(this);
-            }
         }
     }
 }

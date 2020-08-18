@@ -61,7 +61,7 @@ namespace Avalonia.Controls.Selection
             }
         }
 
-        private ItemsSourceView<T>? Items => _items ?? _owner?.Items;
+        private ItemsSourceView<T>? Items => _items ?? _owner?.ItemsView;
         private IReadOnlyList<IndexRange>? Ranges => _ranges ?? _owner!.Ranges;
 
         public IEnumerator<T> GetEnumerator()
@@ -88,6 +88,7 @@ namespace Avalonia.Controls.Selection
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
         public static SelectedItems<T>? Create(
             IReadOnlyList<IndexRange>? ranges,
             ItemsSourceView<T>? items)
