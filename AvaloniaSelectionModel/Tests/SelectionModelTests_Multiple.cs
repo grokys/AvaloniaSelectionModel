@@ -349,6 +349,17 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(new[] { "foo" }, target.SelectedItems);
                 Assert.Equal(1, raised);
             }
+
+            [Fact]
+            public void Deselect_Updates_SelectedItem_To_First_Selected_Item()
+            {
+                var target = CreateTarget();
+
+                target.SelectRange(3, 5);
+                target.Deselect(3);
+
+                Assert.Equal(4, target.SelectedIndex);
+            }
         }
 
         public class DeselectRange
@@ -995,6 +1006,161 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, selectionChangedRaised);
                 Assert.Equal(1, selectedIndexRaised);
                 Assert.Equal(0, indexesChangedRaised);
+            }
+        }
+
+        public class BatchUpdate
+        {
+            [Fact]
+            public void Correctly_Batches_Selects()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndexes);
+                    Assert.Empty(e.DeselectedItems);
+                    Assert.Equal(new[] { 2, 3 }, e.SelectedIndexes);
+                    Assert.Equal(new[] { "baz", "qux" }, e.SelectedItems);
+                    ++raised;
+                };
+
+                using (target.BatchUpdate())
+                {
+                    target.Select(2);
+                    target.Select(3);
+                }
+
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void Correctly_Batches_SelectRanges()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndexes);
+                    Assert.Empty(e.DeselectedItems);
+                    Assert.Equal(new[] { 2, 3, 5, 6 }, e.SelectedIndexes);
+                    Assert.Equal(new[] { "baz", "qux", "corge", "grault" }, e.SelectedItems);
+                    ++raised;
+                };
+
+                using (target.BatchUpdate())
+                {
+                    target.SelectRange(2, 3);
+                    target.SelectRange(5, 6);
+                }
+
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void Correctly_Batches_Select_Deselect()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndexes);
+                    Assert.Empty(e.DeselectedItems);
+                    Assert.Equal(new[] { 2, 3 }, e.SelectedIndexes);
+                    Assert.Equal(new[] { "baz", "qux" }, e.SelectedItems);
+                    ++raised;
+                };
+
+                using (target.BatchUpdate())
+                {
+                    target.Select(2);
+                    target.Select(3);
+                    target.Select(4);
+                    target.Deselect(4);
+                }
+
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void Correctly_Batches_Deselect_Select()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectRange(2, 8);
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Equal(new[] { 2, 3 }, e.DeselectedIndexes);
+                    Assert.Equal(new[] { "baz", "qux" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndexes);
+                    Assert.Empty(e.SelectedItems);
+                    ++raised;
+                };
+
+                using (target.BatchUpdate())
+                {
+                    target.Deselect(2);
+                    target.Deselect(3);
+                    target.Deselect(4);
+                    target.Select(4);
+                }
+
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void Correctly_Batches_Select_Deselect_Range()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndexes);
+                    Assert.Empty(e.DeselectedItems);
+                    Assert.Equal(new[] { 2, 3 }, e.SelectedIndexes);
+                    Assert.Equal(new[] { "baz", "qux" }, e.SelectedItems);
+                    ++raised;
+                };
+
+                using (target.BatchUpdate())
+                {
+                    target.SelectRange(2, 6);
+                    target.DeselectRange(4, 8);
+                }
+
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void Correctly_Batches_Deselect_Select_Range()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectRange(2, 8);
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Equal(new[] { 2, 3 }, e.DeselectedIndexes);
+                    Assert.Equal(new[] { "baz", "qux" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndexes);
+                    Assert.Empty(e.SelectedItems);
+                    ++raised;
+                };
+
+                using (target.BatchUpdate())
+                {
+                    target.DeselectRange(2, 6);
+                    target.SelectRange(4, 3);
+                }
+
+                Assert.Equal(1, raised);
             }
         }
 
