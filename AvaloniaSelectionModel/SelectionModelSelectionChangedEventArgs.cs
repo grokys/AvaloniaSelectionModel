@@ -5,7 +5,7 @@ using Avalonia.Controls.Selection;
 
 #nullable enable
 
-namespace Avalonia.Controls
+namespace Avalonia.Controls.Selection
 {
     public abstract class SelectionModelSelectionChangedEventArgs : EventArgs
     {

@@ -9,7 +9,7 @@ using System.Linq;
 
 #nullable enable
 
-namespace Avalonia.Controls
+namespace Avalonia.Controls.Selection
 {
     public readonly struct IndexPath : IComparable<IndexPath>, IEquatable<IndexPath>
     {
