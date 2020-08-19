@@ -588,7 +588,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
 
             [Fact]
-            public void Setting_SelectedIndex_To_Minus_1_Clears_AnchorIndex()
+            public void Setting_SelectedIndex_To_Minus_1_Doesnt_Clear_AnchorIndex()
             {
                 var target = CreateTarget();
                 var raised = 0;
@@ -605,8 +605,8 @@ namespace Avalonia.Controls.UnitTests.Selection
 
                 target.SelectedIndex = -1;
 
-                Assert.Equal(-1, target.AnchorIndex);
-                Assert.Equal(1, raised);
+                Assert.Equal(1, target.AnchorIndex);
+                Assert.Equal(0, raised);
             }
 
             [Fact]
