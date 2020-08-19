@@ -214,9 +214,8 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(0, target.SelectedIndex);
             }
 
-
             [Fact]
-            public void Raises_PropertyChanged()
+            public void PropertyChanged_Is_Raised()
             {
                 var target = CreateTarget();
                 var raised = 0;
@@ -256,6 +255,72 @@ namespace Avalonia.Controls.UnitTests.Selection
                 public void PreChanged(INotifyCollectionChanged sender, NotifyCollectionChangedEventArgs e)
                 {
                 }
+            }
+        }
+
+        public class SelectedItem
+        {
+            [Fact]
+            public void PropertyChanged_Is_Raised_When_SelectedIndex_Changes()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedItem))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.SelectedIndex = 1;
+
+                Assert.Equal(1, raised);
+            }
+        }
+
+        public class SelectedIndexes
+        {
+            [Fact]
+            public void PropertyChanged_Is_Raised_When_SelectedIndex_Changes()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndexes))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.SelectedIndex = 1;
+
+                Assert.Equal(1, raised);
+            }
+        }
+
+        public class SelectedItems
+        {
+            [Fact]
+            public void PropertyChanged_Is_Raised_When_SelectedIndex_Changes()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedItems))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.SelectedIndex = 1;
+
+                Assert.Equal(1, raised);
             }
         }
 

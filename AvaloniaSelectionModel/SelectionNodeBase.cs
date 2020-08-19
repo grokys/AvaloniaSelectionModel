@@ -90,46 +90,47 @@ namespace Avalonia.Controls.Selection
 
         private protected abstract void OnSelectionChanged(IReadOnlyList<T> deselectedItems);
 
-        private protected void CommitSelect(IndexRange range)
+        private protected int CommitSelect(IndexRange range)
         {
             if (RangesEnabled)
             {
                 _ranges ??= new List<IndexRange>();
-                IndexRange.Add(_ranges, range);
+                return IndexRange.Add(_ranges, range);
             }
+
+            return 0;
         }
 
-        private protected void CommitSelect(IReadOnlyList<IndexRange> ranges)
+        private protected int CommitSelect(IReadOnlyList<IndexRange> ranges)
         {
             if (RangesEnabled)
             {
                 _ranges ??= new List<IndexRange>();
-
-                foreach (var range in ranges)
-                {
-                    IndexRange.Add(_ranges, range);
-                }
+                return IndexRange.Add(_ranges, ranges);
             }
+
+            return 0;
         }
 
-        private protected void CommitDeselect(IndexRange range)
+        private protected int CommitDeselect(IndexRange range)
         {
             if (RangesEnabled)
             {
                 _ranges ??= new List<IndexRange>();
-                IndexRange.Remove(_ranges, range);
+                return IndexRange.Remove(_ranges, range);
             }
+
+            return 0;
         }
 
-        private protected void CommitDeselect(IReadOnlyList<IndexRange> ranges)
+        private protected int CommitDeselect(IReadOnlyList<IndexRange> ranges)
         {
             if (RangesEnabled && _ranges is object)
             {
-                foreach (var range in ranges)
-                {
-                    IndexRange.Remove(_ranges, range);
-                }
+                return IndexRange.Remove(_ranges, ranges);
             }
+
+            return 0;
         }
 
         private protected virtual CollectionChangeState OnItemsAdded(int index, IList items)

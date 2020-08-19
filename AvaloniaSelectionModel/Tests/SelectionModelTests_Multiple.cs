@@ -1,4 +1,5 @@
-﻿using Avalonia.Collections;
+﻿using System.Collections.ObjectModel;
+using Avalonia.Collections;
 using Avalonia.Controls.Selection;
 using Xunit;
 
@@ -167,6 +168,91 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(new[] { 1 }, target.SelectedIndexes);
                 Assert.Equal("bar", target.SelectedItem);
                 Assert.Equal(new[] { "bar" }, target.SelectedItems);
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void PropertyChanged_Is_Raised()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+                
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndex))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.SelectedIndex = 1;
+
+                Assert.Equal(1, raised);
+            }
+        }
+
+        public class SelectedIndexes
+        {
+            [Fact]
+            public void PropertyChanged_Is_Raised_When_SelectedIndex_Changes()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndexes))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.SelectedIndex = 1;
+
+                Assert.Equal(1, raised);
+            }
+        }
+
+        public class SelectedItem
+        {
+            [Fact]
+            public void PropertyChanged_Is_Raised_When_SelectedIndex_Changes()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedItem))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.SelectedIndex = 1;
+
+                Assert.Equal(1, raised);
+            }
+        }
+
+        public class SelectedItems
+        {
+            [Fact]
+            public void PropertyChanged_Is_Raised_When_SelectedIndex_Changes()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedItems))
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.SelectedIndex = 1;
+
                 Assert.Equal(1, raised);
             }
         }
@@ -1006,6 +1092,24 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, selectionChangedRaised);
                 Assert.Equal(1, selectedIndexRaised);
                 Assert.Equal(0, indexesChangedRaised);
+            }
+
+            [Fact]
+            public void Reset_Clears_Selection()
+            {
+                var data = new ObservableCollection<string> { "foo", "bar", "baz", "qux", "quux", "corge" };
+                var target = CreateTarget(createData: false);
+
+                target.Source = data;
+                target.Select(3);
+                target.Select(4);
+                target.Select(5);
+                data.Clear();
+
+                Assert.Equal(-1, target.SelectedIndex);
+                Assert.Empty(target.SelectedIndexes);
+                Assert.Null(target.SelectedItem);
+                Assert.Empty(target.SelectedItems);
             }
         }
 

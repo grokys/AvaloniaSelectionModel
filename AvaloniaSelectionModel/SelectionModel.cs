@@ -309,7 +309,7 @@ namespace Avalonia.Controls.Selection
 
         private protected override void OnItemsReset()
         {
-            _selectedIndex = _anchorIndex = -1;
+            SelectedIndex = -1;
             SelectionReset?.Invoke(this, EventArgs.Empty);
             SelectionChanged?.Invoke(this, new SelectionModelSelectionChangedEventArgs<T>());
         }
@@ -548,18 +548,19 @@ namespace Avalonia.Controls.Selection
         {
             var oldAnchorIndex = _anchorIndex;
             var oldSelectedIndex = _selectedIndex;
+            var indexesChanged = false;
 
             _selectedIndex = operation.SelectedIndex;
             _anchorIndex = operation.AnchorIndex;
 
             if (operation.SelectedRanges is object)
             {
-                CommitSelect(operation.SelectedRanges);
+                indexesChanged |= CommitSelect(operation.SelectedRanges) > 0;
             }
 
             if (operation.DeselectedRanges is object)
             {
-                CommitDeselect(operation.DeselectedRanges);
+                indexesChanged |= CommitDeselect(operation.DeselectedRanges) > 0;
             }
 
             if (SelectionChanged is object)
@@ -594,12 +595,21 @@ namespace Avalonia.Controls.Selection
 
             if (oldSelectedIndex != _selectedIndex)
             {
+                indexesChanged = true;
                 RaisePropertyChanged(nameof(SelectedIndex));
+                RaisePropertyChanged(nameof(SelectedItem));
             }
 
             if (oldAnchorIndex != _anchorIndex)
             {
+                indexesChanged = true;
                 RaisePropertyChanged(nameof(AnchorIndex));
+            }
+
+            if (indexesChanged)
+            {
+                RaisePropertyChanged(nameof(SelectedIndexes));
+                RaisePropertyChanged(nameof(SelectedItems));
             }
 
             _operation = null;
