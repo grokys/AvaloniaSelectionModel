@@ -628,10 +628,19 @@ namespace Avalonia.Controls.UnitTests.Selection
                 var data = (AvaloniaList<string>)target.Source!;
                 var selectionChangedRaised = 0;
                 var indexesChangedRaised = 0;
+                var selectedIndexRaised = 0;
 
                 target.SelectedIndex = 1;
 
                 target.SelectionChanged += (s, e) => ++selectionChangedRaised;
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndex))
+                    {
+                        ++selectedIndexRaised;
+                    }
+                };
 
                 target.IndexesChanged += (s, e) =>
                 {
@@ -648,6 +657,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(new[] { "bar" }, target.SelectedItems);
                 Assert.Equal(2, target.AnchorIndex);
                 Assert.Equal(1, indexesChangedRaised);
+                Assert.Equal(1, selectedIndexRaised);
                 Assert.Equal(0, selectionChangedRaised);
             }
 
