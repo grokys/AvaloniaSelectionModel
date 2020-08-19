@@ -16,6 +16,7 @@ namespace Avalonia.Controls.Selection
         object? SelectedItem { get; }
         IReadOnlyList<object?> SelectedItems { get; }
         int AnchorIndex { get; set; }
+        int Count { get; }
 
         public event EventHandler<SelectionModelIndexesChangedEventArgs>? IndexesChanged;
         public event EventHandler<SelectionModelSelectionChangedEventArgs>? SelectionChanged;

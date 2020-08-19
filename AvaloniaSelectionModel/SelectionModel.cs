@@ -105,6 +105,21 @@ namespace Avalonia.Controls.Selection
             }
         }
 
+        public int Count
+        {
+            get
+            {
+                if (SingleSelect)
+                {
+                    return _selectedIndex >= 0 ? 1 : 0;
+                }
+                else
+                {
+                    return IndexRange.GetCount(Ranges);
+                }
+            }
+        }
+
         IEnumerable? ISelectionModel.Source 
         {
             get => Source;
@@ -194,7 +209,6 @@ namespace Avalonia.Controls.Selection
             {
                 return;
             }
-
 
             if (RangesEnabled)
             {
