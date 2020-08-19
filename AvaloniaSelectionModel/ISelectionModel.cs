@@ -21,7 +21,7 @@ namespace Avalonia.Controls.Selection
         public event EventHandler<SelectionModelIndexesChangedEventArgs>? IndexesChanged;
         public event EventHandler<SelectionModelSelectionChangedEventArgs>? SelectionChanged;
         public event EventHandler? LostSelection;
-        public event EventHandler? SelectionReset;
+        public event EventHandler? SourceReset;
 
         public void BeginBatchUpdate();
         public void EndBatchUpdate();

@@ -899,16 +899,8 @@ namespace Avalonia.Controls.UnitTests.Selection
                     }
                 };
 
-                target.SelectionChanged += (s, e) =>
-                {
-                    Assert.Empty(e.DeselectedIndexes);
-                    Assert.Empty(e.DeselectedItems);
-                    Assert.Empty(e.SelectedIndexes);
-                    Assert.Empty(e.SelectedItems);
-                    ++selectionChangedRaised;
-                };
-
-                target.SelectionReset += (s, e) => ++resetRaised;
+                target.SelectionChanged += (s, e) => ++selectionChangedRaised;
+                target.SourceReset += (s, e) => ++resetRaised;
 
                 data.Clear();
 
@@ -917,7 +909,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Null(target.SelectedItem);
                 Assert.Empty(target.SelectedItems);
                 Assert.Equal(-1, target.AnchorIndex);
-                Assert.Equal(1, selectionChangedRaised);
+                Assert.Equal(0, selectionChangedRaised);
                 Assert.Equal(1, resetRaised);
                 Assert.Equal(1, selectedIndexRaised);
             }

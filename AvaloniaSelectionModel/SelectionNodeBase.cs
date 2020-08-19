@@ -86,7 +86,7 @@ namespace Avalonia.Controls.Selection
 
         private protected abstract void OnIndexesChanged(int shiftIndex, int shiftDelta);
 
-        private protected abstract void OnItemsReset();
+        private protected abstract void OnSourceReset();
 
         private protected abstract void OnSelectionChanged(IReadOnlyList<T> deselectedItems);
 
@@ -261,7 +261,7 @@ namespace Avalonia.Controls.Selection
                     }
                     break;
                 case NotifyCollectionChangedAction.Reset:
-                    OnItemsReset();
+                    OnSourceReset();
                     break;
             }
 

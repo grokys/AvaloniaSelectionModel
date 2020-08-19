@@ -136,7 +136,7 @@ namespace Avalonia.Controls.Selection
         public event EventHandler<SelectionModelIndexesChangedEventArgs>? IndexesChanged;
         public event EventHandler<SelectionModelSelectionChangedEventArgs<T>>? SelectionChanged;
         public event EventHandler? LostSelection;
-        public event EventHandler? SelectionReset;
+        public event EventHandler? SourceReset;
         public event PropertyChangedEventHandler? PropertyChanged;
 
         event EventHandler<SelectionModelSelectionChangedEventArgs>? ISelectionModel.SelectionChanged
@@ -246,13 +246,23 @@ namespace Avalonia.Controls.Selection
             IndexesChanged?.Invoke(this, new SelectionModelIndexesChangedEventArgs(shiftIndex, shiftDelta));
         }
 
-        private protected override void OnItemsReset()
+        private protected override void OnSourceReset()
         {
             _selectedIndex = _anchorIndex = -1;
             CommitDeselect(new IndexRange(0, int.MaxValue));
 
-            SelectionReset?.Invoke(this, EventArgs.Empty);
-            SelectionChanged?.Invoke(this, new SelectionModelSelectionChangedEventArgs<T>());
+            if (SourceReset is object)
+            {
+                SourceReset.Invoke(this, EventArgs.Empty);
+            }
+            else
+            {
+                //Logger.TryGet(LogEventLevel.Warning, LogArea.Control)?.Log(
+                //    this,
+                //    "SelectionModel received Reset but no SourceReset handler was registered to handle it. " +
+                //    "Selection may be out of sync.",
+                //    typeof(SelectionModel));
+            }
         }
 
         private protected override void OnSelectionChanged(IReadOnlyList<T> deselectedItems)

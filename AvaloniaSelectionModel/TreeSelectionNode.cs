@@ -109,7 +109,7 @@ namespace Avalonia.Controls.Selection
             _owner.OnIndexesChanged(Path, shiftIndex, shiftDelta);
         }
 
-        private protected override void OnItemsReset()
+        private protected override void OnSourceReset()
         {
             throw new NotImplementedException();
         }

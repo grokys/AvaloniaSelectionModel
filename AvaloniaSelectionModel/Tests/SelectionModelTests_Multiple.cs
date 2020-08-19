@@ -1,4 +1,6 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using Avalonia.Collections;
 using Avalonia.Controls.Selection;
 using Xunit;
@@ -1133,16 +1135,8 @@ namespace Avalonia.Controls.UnitTests.Selection
                     }
                 };
 
-                target.SelectionChanged += (s, e) =>
-                {
-                    Assert.Empty(e.DeselectedIndexes);
-                    Assert.Empty(e.DeselectedItems);
-                    Assert.Empty(e.SelectedIndexes);
-                    Assert.Empty(e.SelectedItems);
-                    ++selectionChangedRaised;
-                };
-
-                target.SelectionReset += (s, e) => ++resetRaised;
+                target.SelectionChanged += (s, e) => ++selectionChangedRaised;
+                target.SourceReset += (s, e) => ++resetRaised;
 
                 data.Clear();
 
@@ -1151,7 +1145,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Null(target.SelectedItem);
                 Assert.Empty(target.SelectedItems);
                 Assert.Equal(-1, target.AnchorIndex);
-                Assert.Equal(1, selectionChangedRaised);
+                Assert.Equal(0, selectionChangedRaised);
                 Assert.Equal(1, resetRaised);
                 Assert.Equal(1, selectedIndexRaised);
             }
@@ -1394,6 +1388,42 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
         }
 
+        public class SourceReset
+        {
+            [Fact]
+            public void Can_Restore_Selection_In_SourceReset_Event()
+            {
+                var data = new ResettingList<string> { "foo", "bar", "baz" };
+                var target = CreateTarget(createData: false);
+                var sourceResetRaised = 0;
+                var selectionChangedRaised = 0;
+
+                target.Source = data;
+                target.SelectedIndex = 1;
+
+                target.SourceReset += (s, e) =>
+                {
+                    target.SelectedIndex = data.IndexOf("bar");
+                    ++sourceResetRaised;
+                };
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndexes);
+                    Assert.Empty(e.DeselectedItems);
+                    Assert.Equal(new[] { 3 }, e.SelectedIndexes);
+                    Assert.Equal(new[] { "bar" }, e.SelectedItems);
+                    ++selectionChangedRaised;
+                };
+
+                data.Reset(new[] { "qux", "foo", "quux", "bar", "baz" });
+
+                Assert.Equal(3, target.SelectedIndex);
+                Assert.Equal(1, selectionChangedRaised);
+                Assert.Equal(1, sourceResetRaised);
+            }
+        }
+
         private static SelectionModel<string> CreateTarget(bool createData = true)
         {
             var result = new SelectionModel<string> { SingleSelect = false };
@@ -1420,5 +1450,24 @@ namespace Avalonia.Controls.UnitTests.Selection
 
             return result;
         }
+
+        private class ResettingList<T> : List<T>, INotifyCollectionChanged
+        {
+            public event NotifyCollectionChangedEventHandler? CollectionChanged;
+
+            public void Reset(IEnumerable<T>? items = null)
+            {
+                if (items != null)
+                {
+                    Clear();
+                    AddRange(items);
+                }
+
+                CollectionChanged?.Invoke(
+                    this,
+                    new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+            }
+        }
+
     }
 }
