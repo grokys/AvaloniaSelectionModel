@@ -20,6 +20,15 @@ namespace Avalonia.Controls.Selection
         private SelectedItems<T>? _selectedItems;
         private SelectedItems<T>.Untyped? _selectedItemsUntyped;
 
+        public SelectionModel()
+        {
+        }
+
+        public SelectionModel(IEnumerable<T>? source)
+        {
+            Source = source;
+        }
+
         public override IEnumerable<T>? Source
         {
             get => base.Source;
@@ -426,6 +435,11 @@ namespace Avalonia.Controls.Selection
 
         private void SetSelectedIndex(int value, bool updateAnchor = true)
         {
+            if (_selectedIndex == value)
+            {
+                return;
+            }
+
             using var update = BatchUpdate();
             var o = update.Operation;
             var index = CoerceIndex(value);
@@ -619,14 +633,12 @@ namespace Avalonia.Controls.Selection
         {
             public Operation(SelectionModel<T> owner)
             {
-                SingleSelect = owner.SingleSelect;
                 AnchorIndex = owner.AnchorIndex;
                 SelectedIndex = owner.SelectedIndex;
             }
 
             public int UpdateCount { get; set; }
             public bool IsSourceUpdate { get; set; }
-            public bool SingleSelect { get; }
             public int AnchorIndex { get; set; }
             public int SelectedIndex { get; set; }
             public List<IndexRange>? SelectedRanges { get; set; }

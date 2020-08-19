@@ -72,39 +72,6 @@ namespace Avalonia.Controls.Selection
             return _path?[index] ?? (_index - 1);
         }
 
-        public int? GetLeaf()
-        {
-            if (GetSize() > 0)
-            {
-                return GetAt(GetSize() - 1);
-            }
-
-            return null;
-        }
-
-        public IndexPath GetParent()
-        {
-            if (GetSize() == 0)
-            {
-                throw new InvalidOperationException("Cannot get parent of root index.");
-            }
-
-            if (_path is null)
-            {
-                return default;
-            }
-            else if (_path.Length == 2)
-            {
-                return new IndexPath(_path[0]);
-            }
-            else
-            {
-                var path = new int[_path.Length - 1];
-                Array.Copy(_path, path, _path.Length - 1);
-                return new IndexPath(path);
-            }
-        }
-
         public int CompareTo(IndexPath other)
         {
             var rhsPath = other;
@@ -162,26 +129,6 @@ namespace Avalonia.Controls.Selection
             }
         }
 
-        public bool IsAncestorOf(in IndexPath other)
-        {
-            if (other.GetSize() <= GetSize())
-            {
-                return false;
-            }
-
-            var size = GetSize();
-
-            for (int i = 0; i < size; i++)
-            {
-                if (GetAt(i) != other.GetAt(i))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         public override string ToString()
         {
             if (_path != null)
@@ -197,12 +144,6 @@ namespace Avalonia.Controls.Selection
                 return "R";
             }
         }
-
-        public static IndexPath CreateFrom(int index) => new IndexPath(index);
-
-        public static IndexPath CreateFrom(int groupIndex, int itemIndex) => new IndexPath(groupIndex, itemIndex);
-
-        public static IndexPath CreateFromIndices(IList<int> indices) => new IndexPath(indices);
 
         public override bool Equals(object? obj) => obj is IndexPath other && Equals(other);
 
@@ -225,6 +166,75 @@ namespace Avalonia.Controls.Selection
             }
 
             return hashCode;
+        }
+        
+        internal bool IsAncestorOf(in IndexPath other)
+        {
+            if (other.GetSize() <= GetSize())
+            {
+                return false;
+            }
+
+            var size = GetSize();
+
+            for (int i = 0; i < size; i++)
+            {
+                if (GetAt(i) != other.GetAt(i))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        internal int? GetLeaf()
+        {
+            if (GetSize() > 0)
+            {
+                return GetAt(GetSize() - 1);
+            }
+
+            return null;
+        }
+
+        internal IndexPath GetParent()
+        {
+            if (GetSize() == 0)
+            {
+                throw new InvalidOperationException("Cannot get parent of root index.");
+            }
+
+            if (_path is null)
+            {
+                return default;
+            }
+            else if (_path.Length == 2)
+            {
+                return new IndexPath(_path[0]);
+            }
+            else
+            {
+                var path = new int[_path.Length - 1];
+                Array.Copy(_path, path, _path.Length - 1);
+                return new IndexPath(path);
+            }
+        }
+
+        internal int[] ToArray()
+        {
+            var result = new int[GetSize()];
+
+            if (_path is object)
+            {
+                _path.CopyTo(result, 0);
+            }
+            else if (result.Length > 0)
+            {
+                result[0] = _index - 1;
+            }
+
+            return result;
         }
 
         public static bool operator <(IndexPath x, IndexPath y) { return x.CompareTo(y) < 0; }

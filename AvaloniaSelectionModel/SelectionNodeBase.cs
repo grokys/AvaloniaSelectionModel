@@ -112,6 +112,15 @@ namespace Avalonia.Controls.Selection
             }
         }
 
+        private protected void CommitDeselect(IndexRange range)
+        {
+            if (RangesEnabled)
+            {
+                _ranges ??= new List<IndexRange>();
+                IndexRange.Remove(_ranges, range);
+            }
+        }
+
         private protected void CommitDeselect(IReadOnlyList<IndexRange> ranges)
         {
             if (RangesEnabled && _ranges is object)
