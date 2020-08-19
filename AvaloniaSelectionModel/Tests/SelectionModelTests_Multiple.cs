@@ -98,6 +98,25 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(new[] { "baz" }, target.SelectedItems);
                 Assert.Equal(1, raised);
             }
+
+            [Fact]
+            public void Initializing_Source_Doesnt_Raise_SelectionChanged_If_Selection_Valid()
+            {
+                var target = CreateTarget(false);
+                var raised = 0;
+
+                target.Select(1);
+                target.Select(2);
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    ++raised;
+                };
+
+                target.Source = new[] { "foo", "bar", "baz" };
+
+                Assert.Equal(0, raised);
+            }
         }
 
         public class SelectedIndex
