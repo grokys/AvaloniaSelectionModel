@@ -310,7 +310,9 @@ namespace Avalonia.Controls.Selection
 
         private protected override void OnItemsReset()
         {
-            SelectedIndex = -1;
+            _selectedIndex = _anchorIndex = -1;
+            CommitDeselect(new IndexRange(0, int.MaxValue));
+
             SelectionReset?.Invoke(this, EventArgs.Empty);
             SelectionChanged?.Invoke(this, new SelectionModelSelectionChangedEventArgs<T>());
         }
