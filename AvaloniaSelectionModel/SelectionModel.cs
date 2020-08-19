@@ -501,79 +501,84 @@ namespace Avalonia.Controls.Selection
 
         private void CommitOperation(Operation operation)
         {
-            var oldAnchorIndex = _anchorIndex;
-            var oldSelectedIndex = _selectedIndex;
-            var indexesChanged = false;
-
-            if (operation.SelectedIndex == -1 && LostSelection is object)
+            try
             {
-                operation.UpdateCount++;
-                LostSelection?.Invoke(this, EventArgs.Empty);
-            }
+                var oldAnchorIndex = _anchorIndex;
+                var oldSelectedIndex = _selectedIndex;
+                var indexesChanged = false;
 
-            _selectedIndex = operation.SelectedIndex;
-            _anchorIndex = operation.AnchorIndex;
-
-            if (operation.SelectedRanges is object)
-            {
-                indexesChanged |= CommitSelect(operation.SelectedRanges) > 0;
-            }
-
-            if (operation.DeselectedRanges is object)
-            {
-                indexesChanged |= CommitDeselect(operation.DeselectedRanges) > 0;
-            }
-
-            if (SelectionChanged is object)
-            {
-                IReadOnlyList<IndexRange>? deselected = operation.DeselectedRanges;
-                IReadOnlyList<IndexRange>? selected = operation.SelectedRanges;
-
-                if (SingleSelect && oldSelectedIndex != _selectedIndex)
+                if (operation.SelectedIndex == -1 && LostSelection is object)
                 {
-                    if (oldSelectedIndex != -1)
+                    operation.UpdateCount++;
+                    LostSelection?.Invoke(this, EventArgs.Empty);
+                }
+
+                _selectedIndex = operation.SelectedIndex;
+                _anchorIndex = operation.AnchorIndex;
+
+                if (operation.SelectedRanges is object)
+                {
+                    indexesChanged |= CommitSelect(operation.SelectedRanges) > 0;
+                }
+
+                if (operation.DeselectedRanges is object)
+                {
+                    indexesChanged |= CommitDeselect(operation.DeselectedRanges) > 0;
+                }
+
+                if (SelectionChanged is object)
+                {
+                    IReadOnlyList<IndexRange>? deselected = operation.DeselectedRanges;
+                    IReadOnlyList<IndexRange>? selected = operation.SelectedRanges;
+
+                    if (SingleSelect && oldSelectedIndex != _selectedIndex)
                     {
-                        deselected = new[] { new IndexRange(oldSelectedIndex) };
+                        if (oldSelectedIndex != -1)
+                        {
+                            deselected = new[] { new IndexRange(oldSelectedIndex) };
+                        }
+
+                        if (_selectedIndex != -1)
+                        {
+                            selected = new[] { new IndexRange(_selectedIndex) };
+                        }
                     }
 
-                    if (_selectedIndex != -1)
+                    if (deselected?.Count > 0 || selected?.Count > 0)
                     {
-                        selected = new[] { new IndexRange(_selectedIndex) };
+                        var deselectedSource = operation.IsSourceUpdate ? null : ItemsView;
+                        var e = new SelectionModelSelectionChangedEventArgs<T>(
+                            SelectedIndexes<T>.Create(deselected),
+                            SelectedIndexes<T>.Create(selected),
+                            SelectedItems<T>.Create(deselected, deselectedSource),
+                            SelectedItems<T>.Create(selected, ItemsView));
+                        SelectionChanged?.Invoke(this, e);
                     }
                 }
 
-                if (deselected?.Count > 0 || selected?.Count > 0)
+                if (oldSelectedIndex != _selectedIndex)
                 {
-                    var deselectedSource = operation.IsSourceUpdate ? null : ItemsView;
-                    var e = new SelectionModelSelectionChangedEventArgs<T>(
-                        SelectedIndexes<T>.Create(deselected),
-                        SelectedIndexes<T>.Create(selected),
-                        SelectedItems<T>.Create(deselected, deselectedSource),
-                        SelectedItems<T>.Create(selected, ItemsView));
-                    SelectionChanged?.Invoke(this, e);
+                    indexesChanged = true;
+                    RaisePropertyChanged(nameof(SelectedIndex));
+                    RaisePropertyChanged(nameof(SelectedItem));
+                }
+
+                if (oldAnchorIndex != _anchorIndex)
+                {
+                    indexesChanged = true;
+                    RaisePropertyChanged(nameof(AnchorIndex));
+                }
+
+                if (indexesChanged)
+                {
+                    RaisePropertyChanged(nameof(SelectedIndexes));
+                    RaisePropertyChanged(nameof(SelectedItems));
                 }
             }
-
-            if (oldSelectedIndex != _selectedIndex)
+            finally
             {
-                indexesChanged = true;
-                RaisePropertyChanged(nameof(SelectedIndex));
-                RaisePropertyChanged(nameof(SelectedItem));
+                _operation = null;
             }
-
-            if (oldAnchorIndex != _anchorIndex)
-            {
-                indexesChanged = true;
-                RaisePropertyChanged(nameof(AnchorIndex));
-            }
-
-            if (indexesChanged)
-            {
-                RaisePropertyChanged(nameof(SelectedIndexes));
-                RaisePropertyChanged(nameof(SelectedItems));
-            }
-
-            _operation = null;
         }
 
         public struct BatchUpdateOperation : IDisposable
