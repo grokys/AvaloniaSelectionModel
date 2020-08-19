@@ -135,6 +135,7 @@ namespace Avalonia.Controls.Selection
 
         public event EventHandler<SelectionModelIndexesChangedEventArgs>? IndexesChanged;
         public event EventHandler<SelectionModelSelectionChangedEventArgs<T>>? SelectionChanged;
+        public event EventHandler? LostSelection;
         public event EventHandler? SelectionReset;
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -503,6 +504,12 @@ namespace Avalonia.Controls.Selection
             var oldAnchorIndex = _anchorIndex;
             var oldSelectedIndex = _selectedIndex;
             var indexesChanged = false;
+
+            if (operation.SelectedIndex == -1 && LostSelection is object)
+            {
+                operation.UpdateCount++;
+                LostSelection?.Invoke(this, EventArgs.Empty);
+            }
 
             _selectedIndex = operation.SelectedIndex;
             _anchorIndex = operation.AnchorIndex;

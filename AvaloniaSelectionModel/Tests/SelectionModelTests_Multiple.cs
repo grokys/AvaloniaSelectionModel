@@ -1364,6 +1364,36 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
         }
 
+        public class LostSelection
+        {
+            [Fact]
+            public void Can_Select_First_Item_On_LostSelection()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectedIndex = 1;
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Equal(new[] { 1 }, e.DeselectedIndexes);
+                    Assert.Equal(new[] { "bar" }, e.DeselectedItems);
+                    Assert.Equal(new[] { 0 }, e.SelectedIndexes);
+                    Assert.Equal(new[] { "foo" }, e.SelectedItems);
+                    ++raised;
+                };
+
+                target.LostSelection += (s, e) =>
+                {
+                    target.Select(0);
+                };
+
+                target.Clear();
+
+                Assert.Equal(1, raised);
+            }
+        }
+
         private static SelectionModel<string> CreateTarget(bool createData = true)
         {
             var result = new SelectionModel<string> { SingleSelect = false };
