@@ -297,6 +297,11 @@ namespace Avalonia.Controls.Selection
             }
         }
 
+        protected void RaisePropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
         private protected override void OnIndexesChanged(int shiftIndex, int shiftDelta)
         {
             IndexesChanged?.Invoke(this, new SelectionModelIndexesChangedEventArgs(shiftIndex, shiftDelta));
@@ -598,11 +603,6 @@ namespace Avalonia.Controls.Selection
             }
 
             _operation = null;
-        }
-
-        private void RaisePropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         public struct BatchUpdateOperation : IDisposable

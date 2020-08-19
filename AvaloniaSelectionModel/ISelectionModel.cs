@@ -30,4 +30,17 @@ namespace Avalonia.Controls.Selection
         void DeselectRange(int start, int end);
         void Clear();
     }
+
+    public static class SelectionModelExtensions
+    {
+        public static void SelectAll(this ISelectionModel model)
+        {
+            model.SelectRange(0, int.MaxValue);
+        }
+
+        public static void SelectRangeFromAnchor(this ISelectionModel model, int to)
+        {
+            model.SelectRange(model.AnchorIndex, to);
+        }
+    }
 }
