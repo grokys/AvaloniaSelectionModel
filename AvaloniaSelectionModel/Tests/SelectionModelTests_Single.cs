@@ -881,7 +881,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
 
             [Fact]
-            public void Clearing_Source_Updates_State()
+            public void Resetting_Source_Updates_State()
             {
                 var target = CreateTarget();
                 var data = (AvaloniaList<string>)target.Source!;
@@ -939,6 +939,24 @@ namespace Avalonia.Controls.UnitTests.Selection
                 target.EndBatchUpdate();
 
                 Assert.Equal(0, target.SelectedIndex);
+            }
+
+            [Fact]
+            public void Correctly_Batches_Clear_SelectedIndex()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectedIndex = 2;
+                target.SelectionChanged += (s, e) => ++raised;
+
+                using (target.BatchUpdate())
+                {
+                    target.Clear();
+                    target.SelectedIndex = 2;
+                }
+
+                Assert.Equal(0, raised);
             }
         }
 

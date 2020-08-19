@@ -283,14 +283,15 @@ namespace Avalonia.Controls.Selection
 
         public void Clear()
         {
+            using var update = BatchUpdate();
+            var o = update.Operation;
+
             if (SingleSelect)
             {
-                SelectedIndex = -1;
+                o.SelectedIndex = -1;
             }
             else
             {
-                using var update = BatchUpdate();
-                var o = update.Operation;
                 o.DeselectedRanges = Ranges.ToList();
                 o.SelectedRanges = null;
                 o.SelectedIndex = o.AnchorIndex = 0;
@@ -440,7 +441,7 @@ namespace Avalonia.Controls.Selection
 
         private void SetSelectedIndex(int value, bool updateAnchor = true)
         {
-            if (_selectedIndex == value)
+            if (_operation is null && _selectedIndex == value)
             {
                 return;
             }
@@ -455,7 +456,7 @@ namespace Avalonia.Controls.Selection
             {
                 o.DeselectedRanges = Ranges.ToList();
 
-                if (index >= 0)
+                if (index >= 0 && IndexRange.Remove(o.DeselectedRanges, new IndexRange(index)) == 0)
                 {
                     var range = new IndexRange(index);
                     o.SelectedRanges = new List<IndexRange> { range };

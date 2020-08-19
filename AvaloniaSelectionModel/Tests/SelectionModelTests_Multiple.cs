@@ -1095,21 +1095,46 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
 
             [Fact]
-            public void Reset_Clears_Selection()
+            public void Resetting_Source_Updates_State()
             {
-                var data = new ObservableCollection<string> { "foo", "bar", "baz", "qux", "quux", "corge" };
-                var target = CreateTarget(createData: false);
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var selectionChangedRaised = 0;
+                var selectedIndexRaised = 0;
+                var resetRaised = 0;
 
                 target.Source = data;
-                target.Select(3);
-                target.Select(4);
-                target.Select(5);
+                target.Select(1);
+
+                target.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(target.SelectedIndex))
+                    {
+                        ++selectedIndexRaised;
+                    }
+                };
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndexes);
+                    Assert.Empty(e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndexes);
+                    Assert.Empty(e.SelectedItems);
+                    ++selectionChangedRaised;
+                };
+
+                target.SelectionReset += (s, e) => ++resetRaised;
+
                 data.Clear();
 
                 Assert.Equal(-1, target.SelectedIndex);
                 Assert.Empty(target.SelectedIndexes);
                 Assert.Null(target.SelectedItem);
                 Assert.Empty(target.SelectedItems);
+                Assert.Equal(-1, target.AnchorIndex);
+                Assert.Equal(1, selectionChangedRaised);
+                Assert.Equal(1, resetRaised);
+                Assert.Equal(1, selectedIndexRaised);
             }
         }
 
@@ -1288,6 +1313,32 @@ namespace Avalonia.Controls.UnitTests.Selection
                 {
                     target.Clear();
                     target.Select(2);
+                }
+
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void Correctly_Batches_Clear_SelectedIndex()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectRange(2, 3);
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Equal(new[] { 3 }, e.DeselectedIndexes);
+                    Assert.Equal(new[] { "qux" }, e.DeselectedItems);
+                    Assert.Empty(e.SelectedIndexes);
+                    Assert.Empty(e.SelectedItems);
+                    ++raised;
+                };
+
+                using (target.BatchUpdate())
+                {
+                    target.Clear();
+                    target.SelectedIndex = 2;
                 }
 
                 Assert.Equal(1, raised);
