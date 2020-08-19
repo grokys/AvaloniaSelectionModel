@@ -52,7 +52,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, target.SelectedIndex);
                 Assert.Equal(new[] { 1 }, target.SelectedIndexes);
                 Assert.Equal("bar", target.SelectedItem);
-                Assert.Equal(new string[] { "bar" }, target.SelectedItems);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
                 Assert.Equal(0, raised);
             }
 
@@ -141,7 +141,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 target.SelectionChanged += (s, e) =>
                 {
                     Assert.Equal(new[] { 1 }, e.DeselectedIndexes);
-                    Assert.Equal(new string[] { "bar" }, e.DeselectedItems);
+                    Assert.Equal(new[] { "bar" }, e.DeselectedItems);
                     Assert.Empty(e.SelectedIndexes);
                     Assert.Empty(e.SelectedItems);
                     ++raised;
@@ -184,9 +184,9 @@ namespace Avalonia.Controls.UnitTests.Selection
                 target.SelectionChanged += (s, e) =>
                 {
                     Assert.Equal(new[] { 0 }, e.DeselectedIndexes);
-                    Assert.Equal(new string[] { "foo" }, e.DeselectedItems);
+                    Assert.Equal(new[] { "foo" }, e.DeselectedItems);
                     Assert.Equal(new[] { 1 }, e.SelectedIndexes);
-                    Assert.Equal(new string[] { "bar" }, e.SelectedItems);
+                    Assert.Equal(new[] { "bar" }, e.SelectedItems);
                     ++raised;
                 };
 
@@ -195,7 +195,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, target.SelectedIndex);
                 Assert.Equal(new[] { 1 }, target.SelectedIndexes);
                 Assert.Equal("bar", target.SelectedItem);
-                Assert.Equal(new string[] { "bar" }, target.SelectedItems);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
                 Assert.Equal(1, raised);
             }
 
@@ -359,9 +359,9 @@ namespace Avalonia.Controls.UnitTests.Selection
                 target.SelectionChanged += (s, e) =>
                 {
                     Assert.Equal(new[] { 0 }, e.DeselectedIndexes);
-                    Assert.Equal(new string[] { "foo" }, e.DeselectedItems);
+                    Assert.Equal(new[] { "foo" }, e.DeselectedItems);
                     Assert.Equal(new[] { 1 }, e.SelectedIndexes);
-                    Assert.Equal(new string[] { "bar" }, e.SelectedItems);
+                    Assert.Equal(new[] { "bar" }, e.SelectedItems);
                     ++raised;
                 };
 
@@ -370,7 +370,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, target.SelectedIndex);
                 Assert.Equal(new[] { 1 }, target.SelectedIndexes);
                 Assert.Equal("bar", target.SelectedItem);
-                Assert.Equal(new string[] { "bar" }, target.SelectedItems);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
                 Assert.Equal(1, raised);
             }
 
@@ -432,7 +432,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 target.SelectionChanged += (s, e) =>
                 {
                     Assert.Equal(new[] { 0 }, e.DeselectedIndexes);
-                    Assert.Equal(new string[] { "foo" }, e.DeselectedItems);
+                    Assert.Equal(new[] { "foo" }, e.DeselectedItems);
                     Assert.Empty(e.SelectedIndexes);
                     Assert.Empty(e.SelectedItems);
                     ++raised;
@@ -460,7 +460,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, target.SelectedIndex);
                 Assert.Equal(new[] { 1 }, target.SelectedIndexes);
                 Assert.Equal("bar", target.SelectedItem);
-                Assert.Equal(new string[] { "bar" }, target.SelectedItems);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
                 Assert.Equal(0, raised);
             }
         }
@@ -478,7 +478,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 target.SelectionChanged += (s, e) =>
                 {
                     Assert.Equal(new[] { 0 }, e.DeselectedIndexes);
-                    Assert.Equal(new string[] { "foo" }, e.DeselectedItems);
+                    Assert.Equal(new[] { "foo" }, e.DeselectedItems);
                     Assert.Empty(e.SelectedIndexes);
                     Assert.Empty(e.SelectedItems);
                     ++raised;
@@ -506,7 +506,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(0, target.SelectedIndex);
                 Assert.Equal(new[] { 0 }, target.SelectedIndexes);
                 Assert.Equal("foo", target.SelectedItem);
-                Assert.Equal(new string[] { "foo" }, target.SelectedItems);
+                Assert.Equal(new[] { "foo" }, target.SelectedItems);
                 Assert.Equal(0, raised);
             }
         }
@@ -659,7 +659,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, target.SelectedIndex);
                 Assert.Equal(new[] { 1 }, target.SelectedIndexes);
                 Assert.Equal("bar", target.SelectedItem);
-                Assert.Equal(new string[] { "bar" }, target.SelectedItems);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
                 Assert.Equal(0, raised);
             }
 
@@ -743,7 +743,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, target.SelectedIndex);
                 Assert.Equal(new[] { 1 }, target.SelectedIndexes);
                 Assert.Equal("bar", target.SelectedItem);
-                Assert.Equal(new string[] { "bar" }, target.SelectedItems);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
                 Assert.Equal(1, target.AnchorIndex);
                 Assert.Equal(0, raised);
             }
@@ -835,7 +835,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Equal(1, target.SelectedIndex);
                 Assert.Equal(new[] { 1 }, target.SelectedIndexes);
                 Assert.Equal("bar", target.SelectedItem);
-                Assert.Equal(new string[] { "bar" }, target.SelectedItems);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
                 Assert.Equal(1, target.AnchorIndex);
                 Assert.Equal(0, raised);
             }
