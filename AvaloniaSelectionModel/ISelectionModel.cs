@@ -13,7 +13,7 @@ namespace Avalonia.Controls.Selection
         bool SingleSelect { get; set; }
         int SelectedIndex { get; set; }
         IReadOnlyList<int> SelectedIndexes { get; }
-        object? SelectedItem { get; }
+        object? SelectedItem { get; set; }
         IReadOnlyList<object?> SelectedItems { get; }
         int AnchorIndex { get; set; }
         int Count { get; }

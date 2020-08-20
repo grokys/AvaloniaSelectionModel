@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using Avalonia.Collections;
 using Avalonia.Controls.Selection;
@@ -120,6 +119,38 @@ namespace Avalonia.Controls.UnitTests.Selection
                 target.Source = new[] { "foo", "bar", "baz" };
 
                 Assert.Equal(0, raised);
+            }
+
+            [Fact]
+            public void Initializing_Source_Respects_Range_SourceItem_Order()
+            {
+                var target = CreateTarget(false);
+
+                target.SelectRange(2, 2);
+                target.SelectedItem = "bar";
+
+                target.Source = new[] { "foo", "bar", "baz" };
+
+                Assert.Equal(1, target.SelectedIndex);
+                Assert.Equal(new[] { 1 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
+            }
+
+            [Fact]
+            public void Initializing_Source_Respects_SourceItem_Range_Order()
+            {
+                var target = CreateTarget(false);
+
+                target.SelectedItem = "baz";
+                target.SelectRange(1, 1);
+
+                target.Source = new[] { "foo", "bar", "baz" };
+
+                Assert.Equal(1, target.SelectedIndex);
+                Assert.Equal(new[] { 1 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
             }
         }
 

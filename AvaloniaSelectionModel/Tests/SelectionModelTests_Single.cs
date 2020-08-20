@@ -14,7 +14,7 @@ namespace Avalonia.Controls.UnitTests.Selection
         public class Source
         {
             [Fact]
-            public void Can_Select_Item_Before_Source_Assigned()
+            public void Can_Select_Index_Before_Source_Assigned()
             {
                 var target = CreateTarget(false);
                 var raised = 0;
@@ -38,7 +38,23 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
 
             [Fact]
-            public void Initializing_Source_Retains_Valid_Selection()
+            public void Can_Select_Item_Before_Source_Assigned()
+            {
+                var target = CreateTarget(false);
+                var raised = 0;
+
+                target.SelectionChanged += (s, e) => ++raised;
+                target.SelectedItem = "bar";
+
+                Assert.Equal(-1, target.SelectedIndex);
+                Assert.Empty(target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new string?[] { "bar" }, target.SelectedItems);
+                Assert.Equal(0, raised);
+            }
+
+            [Fact]
+            public void Initializing_Source_Retains_Valid_Index_Selection()
             {
                 var target = CreateTarget(false);
                 var raised = 0;
@@ -57,7 +73,7 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
 
             [Fact]
-            public void Initializing_Source_Removes_Invalid_Selection()
+            public void Initializing_Source_Removes_Invalid_Index_Selection()
             {
                 var target = CreateTarget(false);
                 var raised = 0;
@@ -80,6 +96,81 @@ namespace Avalonia.Controls.UnitTests.Selection
                 Assert.Null(target.SelectedItem);
                 Assert.Empty(target.SelectedItems);
                 Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void Initializing_Source_Retains_Valid_Item_Selection()
+            {
+                var target = CreateTarget(false);
+                var raised = 0;
+
+                target.SelectedItem = "bar";
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndexes);
+                    Assert.Empty(e.DeselectedItems);
+                    Assert.Equal(new[] { 1 }, e.SelectedIndexes);
+                    Assert.Equal(new string[] { "bar" }, e.SelectedItems);
+                    ++raised;
+                };
+
+                target.Source = new[] { "foo", "bar", "baz" };
+
+                Assert.Equal(1, target.SelectedIndex);
+                Assert.Equal(new[] { 1 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
+                Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void Initializing_Source_Removes_Invalid_Item_Selection()
+            {
+                var target = CreateTarget(false);
+                var raised = 0;
+
+                target.SelectedItem = "qux";
+                target.SelectionChanged += (s, e) => ++raised;
+                target.Source = new[] { "foo", "bar", "baz" };
+
+                Assert.Equal(-1, target.SelectedIndex);
+                Assert.Empty(target.SelectedIndexes);
+                Assert.Null(target.SelectedItem);
+                Assert.Empty(target.SelectedItems);
+                Assert.Equal(0, raised);
+            }
+
+            [Fact]
+            public void Initializing_Source_Respects_SourceIndex_SourceItem_Order()
+            {
+                var target = CreateTarget(false);
+
+                target.SelectedIndex = 0;
+                target.SelectedItem = "bar";
+
+                target.Source = new[] { "foo", "bar", "baz" };
+
+                Assert.Equal(1, target.SelectedIndex);
+                Assert.Equal(new[] { 1 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
+            }
+
+            [Fact]
+            public void Initializing_Source_Respects_SourceItem_SourceIndex_Order()
+            {
+                var target = CreateTarget(false);
+
+                target.SelectedItem = "foo";
+                target.SelectedIndex = 1;
+
+                target.Source = new[] { "foo", "bar", "baz" };
+
+                Assert.Equal(1, target.SelectedIndex);
+                Assert.Equal(new[] { 1 }, target.SelectedIndexes);
+                Assert.Equal("bar", target.SelectedItem);
+                Assert.Equal(new[] { "bar" }, target.SelectedItems);
             }
 
             [Fact]
@@ -235,9 +326,9 @@ namespace Avalonia.Controls.UnitTests.Selection
 
             private class MockBinding : ICollectionChangedListener
             {
-                private readonly SelectionModel<string> _target;
+                private readonly SelectionModel<string?> _target;
 
-                public MockBinding(SelectionModel<string> target, AvaloniaList<string> data)
+                public MockBinding(SelectionModel<string?> target, AvaloniaList<string> data)
                 {
                     _target = target;
                     CollectionChangedEventManager.Instance.AddListener(data, this);
@@ -260,6 +351,26 @@ namespace Avalonia.Controls.UnitTests.Selection
 
         public class SelectedItem
         {
+            [Fact]
+            public void Setting_SelectedItem_To_Valid_Item_Updates_Selection()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectionChanged += (s, e) =>
+                {
+                    Assert.Empty(e.DeselectedIndexes);
+                    Assert.Empty(e.DeselectedItems);
+                    Assert.Equal(new[] { 1 }, e.SelectedIndexes);
+                    Assert.Equal(new[] { "bar" }, e.SelectedItems);
+                    ++raised;
+                };
+
+                target.SelectedItem = "bar";
+
+                Assert.Equal(1, raised);
+            }
+
             [Fact]
             public void PropertyChanged_Is_Raised_When_SelectedIndex_Changes()
             {
@@ -1006,9 +1117,9 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
         }
 
-        private static SelectionModel<string> CreateTarget(bool createData = true)
+        private static SelectionModel<string?> CreateTarget(bool createData = true)
         {
-            var result = new SelectionModel<string> { SingleSelect = true };
+            var result = new SelectionModel<string?> { SingleSelect = true };
 
             if (createData)
             {
