@@ -981,6 +981,31 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
         }
 
+        public class UntypedInterface
+        {
+            [Fact]
+            public void Raises_Untyped_SelectionChanged_Event()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectedIndex = 1;
+
+                ((ISelectionModel)target).SelectionChanged += (s, e) =>
+                {
+                    Assert.Equal(new[] { 1 }, e.DeselectedIndexes);
+                    Assert.Equal(new[] { "bar" }, e.DeselectedItems);
+                    Assert.Equal(new[] { 2 }, e.SelectedIndexes);
+                    Assert.Equal(new[] { "baz" }, e.SelectedItems);
+                    ++raised;
+                };
+
+                target.SelectedIndex = 2;
+
+                Assert.Equal(1, raised);
+            }
+        }
+
         private static SelectionModel<string> CreateTarget(bool createData = true)
         {
             var result = new SelectionModel<string> { SingleSelect = true };

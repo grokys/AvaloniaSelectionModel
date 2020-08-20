@@ -19,6 +19,7 @@ namespace Avalonia.Controls.Selection
         private SelectedIndexes<T>? _selectedIndexes;
         private SelectedItems<T>? _selectedItems;
         private SelectedItems<T>.Untyped? _selectedItemsUntyped;
+        private EventHandler<SelectionModelSelectionChangedEventArgs>? _untypedSelectionChanged;
 
         public SelectionModel()
         {
@@ -141,15 +142,8 @@ namespace Avalonia.Controls.Selection
 
         event EventHandler<SelectionModelSelectionChangedEventArgs>? ISelectionModel.SelectionChanged
         {
-            add
-            {
-                throw new NotImplementedException();
-            }
-
-            remove
-            {
-                throw new NotImplementedException();
-            }
+            add => _untypedSelectionChanged += value;
+            remove => _untypedSelectionChanged -= value;
         }
 
         public BatchUpdateOperation BatchUpdate() => new BatchUpdateOperation(this);
@@ -267,9 +261,12 @@ namespace Avalonia.Controls.Selection
 
         private protected override void OnSelectionChanged(IReadOnlyList<T> deselectedItems)
         {
-            SelectionChanged?.Invoke(
-                this,
-                new SelectionModelSelectionChangedEventArgs<T>(deselectedItems: deselectedItems));
+            if (SelectionChanged is object || _untypedSelectionChanged is object)
+            {
+                var e = new SelectionModelSelectionChangedEventArgs<T>(deselectedItems: deselectedItems);
+                SelectionChanged?.Invoke(this, e);
+                _untypedSelectionChanged?.Invoke(this, e);
+            }
         }
 
         private protected override CollectionChangeState OnItemsAdded(int index, IList items)
@@ -536,7 +533,7 @@ namespace Avalonia.Controls.Selection
                     indexesChanged |= CommitDeselect(operation.DeselectedRanges) > 0;
                 }
 
-                if (SelectionChanged is object)
+                if (SelectionChanged is object || _untypedSelectionChanged is object)
                 {
                     IReadOnlyList<IndexRange>? deselected = operation.DeselectedRanges;
                     IReadOnlyList<IndexRange>? selected = operation.SelectedRanges;
@@ -563,6 +560,7 @@ namespace Avalonia.Controls.Selection
                             SelectedItems<T>.Create(deselected, deselectedSource),
                             SelectedItems<T>.Create(selected, ItemsView));
                         SelectionChanged?.Invoke(this, e);
+                        _untypedSelectionChanged?.Invoke(this, e);
                     }
                 }
 
