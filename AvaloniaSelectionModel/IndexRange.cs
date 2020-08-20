@@ -80,7 +80,14 @@ namespace Avalonia.Controls.Selection
             return Begin == other.Begin && End == other.End;
         }
 
-        public override int GetHashCode() => HashCode.Combine(Begin, End);
+        public override int GetHashCode()
+        {
+            var hashCode = 1903003160;
+            hashCode = hashCode * -1521134295 + Begin.GetHashCode();
+            hashCode = hashCode * -1521134295 + End.GetHashCode();
+            return hashCode;
+        }
+
         public override string ToString() => $"[{Begin}..{End}]";
 
         public static bool operator ==(IndexRange left, IndexRange right) => left.Equals(right);

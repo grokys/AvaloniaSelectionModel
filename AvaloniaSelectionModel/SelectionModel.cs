@@ -228,6 +228,7 @@ namespace Avalonia.Controls.Selection
             }
         }
 
+        public void SelectAll() => SelectRange(0, int.MaxValue);
         public void Clear() => DeselectRange(0, int.MaxValue);
 
         protected void RaisePropertyChanged(string propertyName)

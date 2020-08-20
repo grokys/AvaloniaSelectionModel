@@ -24,7 +24,9 @@ namespace Avalonia.Controls.Selection
         [MaybeNull]
         public T this[int index]
         {
+#pragma warning disable CS8766
             get
+#pragma warning restore CS8766
             {
                 if (index >= Count)
                 {
@@ -70,7 +72,9 @@ namespace Avalonia.Controls.Selection
             {
                 if (_owner.SelectedIndex >= 0)
                 {
+#pragma warning disable CS8603
                     yield return _owner.SelectedItem;
+#pragma warning restore CS8603
                 }
             }
             else
@@ -81,7 +85,9 @@ namespace Avalonia.Controls.Selection
                 {
                     for (var i = range.Begin; i <= range.End; ++i)
                     {
+#pragma warning disable CS8603
                         yield return items is object ? items[i] : default;
+#pragma warning restore CS8603
                     }
                 }
             }

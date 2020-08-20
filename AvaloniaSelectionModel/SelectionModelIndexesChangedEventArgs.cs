@@ -1,5 +1,7 @@
 ﻿using System;
 
+#nullable enable
+
 namespace Avalonia.Controls.Selection
 {
     public class SelectionModelIndexesChangedEventArgs : EventArgs

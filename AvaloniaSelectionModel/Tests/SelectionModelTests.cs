@@ -782,7 +782,7 @@ namespace Avalonia.Controls.UnitTests
             };
 
             target.AnchorIndex = 4;
-            target.SelectRangeFromAnchor(6);
+            target.SelectRange(target.AnchorIndex, 6);
 
             Assert.Equal(1, raised);
         }

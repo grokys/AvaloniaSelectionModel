@@ -38,7 +38,12 @@ namespace Avalonia.Controls
         /// Initializes a new instance of the ItemsSourceView class for the specified data source.
         /// </summary>
         /// <param name="source">The data source.</param>
-        public ItemsSourceView(IEnumerable source)
+        public ItemsSourceView(IEnumerable<T> source)
+            : this((IEnumerable)source)
+        {
+        }
+
+        private protected ItemsSourceView(IEnumerable source)
         {
             source = source ?? throw new ArgumentNullException(nameof(source));
 
@@ -117,9 +122,34 @@ namespace Avalonia.Controls
             }
         }
 
-        public Enumerator GetEnumerator() => new Enumerator(_inner);
+        /// <summary>
+        /// Retrieves the index of the item that has the specified unique identifier (key).
+        /// </summary>
+        /// <param name="index">The index.</param>
+        /// <returns>The key</returns>
+        /// <remarks>
+        /// TODO: Not yet implemented in Avalonia.
+        /// </remarks>
+        public string KeyFromIndex(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Retrieves the unique identifier (key) for the item at the specified index.
+        /// </summary>
+        /// <param name="key">The key.</param>
+        /// <returns>The index.</returns>
+        /// <remarks>
+        /// TODO: Not yet implemented in Avalonia.
+        /// </remarks>
+        public int IndexFromKey(string key)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerator<T> GetEnumerator() => _inner.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => _inner.GetEnumerator();
-        IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
 
         internal void AddListener(ICollectionChangedListener listener)
         {
@@ -155,16 +185,13 @@ namespace Avalonia.Controls
         {
             OnItemsSourceChanged(e);
         }
+    }
 
-        public struct Enumerator : IEnumerator<T>
+    public class ItemsSourceView : ItemsSourceView<object>
+    {
+        public ItemsSourceView(IEnumerable source)
+            : base(source)
         {
-            private readonly IEnumerator<T> _innerEnumerator;
-            public Enumerator(IList<T> inner) => _innerEnumerator = inner.GetEnumerator();
-            public T Current => _innerEnumerator.Current;
-            object? IEnumerator.Current => Current;
-            public void Dispose() => (_innerEnumerator as IDisposable)?.Dispose();
-            public bool MoveNext() => _innerEnumerator.MoveNext();
-            void IEnumerator.Reset() => _innerEnumerator.Reset();
         }
     }
 }
