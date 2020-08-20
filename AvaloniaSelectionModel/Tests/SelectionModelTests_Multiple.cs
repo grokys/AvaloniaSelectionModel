@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using Avalonia.Collections;
@@ -26,6 +27,7 @@ namespace Avalonia.Controls.UnitTests.Selection
                         0 => 5,
                         1 => 10,
                         2 => 100,
+                        _ => throw new NotSupportedException(),
                     };
 
                     Assert.Empty(e.DeselectedIndexes);
@@ -1424,9 +1426,9 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
         }
 
-        private static SelectionModel<string> CreateTarget(bool createData = true)
+        private static SelectionModel<string?> CreateTarget(bool createData = true)
         {
-            var result = new SelectionModel<string> { SingleSelect = false };
+            var result = new SelectionModel<string?> { SingleSelect = false };
 
             if (createData)
             {
