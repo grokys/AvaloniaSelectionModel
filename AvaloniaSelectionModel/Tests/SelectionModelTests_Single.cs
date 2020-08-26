@@ -175,7 +175,26 @@ namespace Avalonia.Controls.UnitTests.Selection
             }
 
             [Fact]
-            public void Changing_Source_First_Clears_Old_Selection()
+            public void Changing_Source_To_Null_Doesnt_Clear_Selection()
+            {
+                var target = CreateTarget();
+                var raised = 0;
+
+                target.SelectedIndex = 2;
+
+                target.SelectionChanged += (s, e) => ++raised;
+
+                target.Source = null;
+
+                Assert.Equal(2, target.SelectedIndex);
+                Assert.Equal(new[] { 2 }, target.SelectedIndexes);
+                Assert.Null(target.SelectedItem);
+                Assert.Equal(new string?[] { null }, target.SelectedItems);
+                Assert.Equal(0, raised);
+            }
+
+            [Fact]
+            public void Changing_Source_To_NonNUll_First_Clears_Old_Selection()
             {
                 var target = CreateTarget();
                 var raised = 0;
@@ -1120,6 +1139,26 @@ namespace Avalonia.Controls.UnitTests.Selection
 
                 Assert.Equal(0, target.SelectedIndex);
                 Assert.Equal(1, raised);
+            }
+
+            [Fact]
+            public void LostSelection_Not_Called_With_Old_Source_When_Changing_Source()
+            {
+                var target = CreateTarget();
+                var data = (AvaloniaList<string>)target.Source!;
+                var raised = 0;
+
+                target.LostSelection += (s, e) =>
+                {
+                    if (target.Source == data)
+                    {
+                        ++raised;
+                    }
+                };
+
+                target.Source = null;
+
+                Assert.Equal(0, raised);
             }
         }
 
