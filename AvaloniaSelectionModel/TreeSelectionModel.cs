@@ -31,7 +31,7 @@ namespace Avalonia.Controls.Selection
 
         public IEnumerable<T>? Source
         {
-            get => _root.Source;
+            get => _root.Source as IEnumerable<T>;
             set
             {
                 if (_root.Source != value)

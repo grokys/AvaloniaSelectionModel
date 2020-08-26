@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -32,6 +33,12 @@ namespace Avalonia.Controls.Selection
                 // HACK
                 Source = _owner.ChildSelector.GetChildrenObservable(parent.ItemsView[index]).Single();
             }
+        }
+
+        public new IEnumerable? Source
+        {
+            get => base.Source;
+            set => base.Source = value;
         }
 
         public IndexPath Path { get; }
